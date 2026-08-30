@@ -4,15 +4,13 @@ strict ( 2 );
 define behavior for ZR_ZSDE002_ORDER_LOG alias OrderLog
 persistent table ztsd_e002_order
 lock master
-authorization master ( instance )
+authorization master ( global )
 {
-  create ( authorization : global );
-  update;
-  delete;
+  create;
 
-  field ( readonly ) OrderUUID;
+  field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LastChangedAt, LocalLastChangedAt;
 
-  association _ItemLog { create; }
+  association _ItemLog         { create; }
   association _OrderPricingLog { create; }
   association _OrderMessageLog { create; }
 }
@@ -21,11 +19,9 @@ define behavior for ZI_ZSDE002_ITEM_LOG alias ItemLog
 persistent table ztsd_e002_item
 lock dependent by _OrderLog
 authorization dependent by _OrderLog
-//etag master <field_name>
 {
-  update;
-  delete;
-  field ( readonly ) ItemUUID, OrderUUID;
+  field ( readonly ) OrderUUID, LocalLastChangedAt;
+
   association _OrderLog;
   association _ItemPricingLog { create; }
 }
@@ -34,11 +30,10 @@ define behavior for ZI_ZSDE002_ITMPRC_LOG alias ItemPricingLog
 persistent table ztsd_e002_itmprc
 lock dependent by _OrderLog
 authorization dependent by _OrderLog
-//etag master <field_name>
 {
-  update;
-  delete;
-  field ( readonly ) ItemPricingUUID, ItemUUID, OrderUUID;
+  field ( readonly )        ItemUUID, LocalLastChangedAt;
+  field ( readonly:update ) OrderUUID;
+
   association _ItemLog;
   association _OrderLog;
 }
@@ -47,11 +42,9 @@ define behavior for ZI_ZSDE002_ORDPRC_LOG alias OrderPricingLog
 persistent table ztsd_e002_ordprc
 lock dependent by _OrderLog
 authorization dependent by _OrderLog
-//etag master <field_name>
 {
-  update;
-  delete;
-  field ( readonly ) OrderPricingUUID, OrderUUID;
+  field ( readonly ) OrderUUID, LocalLastChangedAt;
+
   association _OrderLog;
 }
 
@@ -59,10 +52,8 @@ define behavior for ZI_ZSDE002_ORDMSG_LOG alias OrderMessageLog
 persistent table ztsd_e002_ordmsg
 lock dependent by _OrderLog
 authorization dependent by _OrderLog
-//etag master <field_name>
 {
-  update;
-  delete;
-  field ( readonly ) OrderMessageUUID, OrderUUID;
+  field ( readonly ) OrderUUID, LocalLastChangedAt;
+
   association _OrderLog;
 }
