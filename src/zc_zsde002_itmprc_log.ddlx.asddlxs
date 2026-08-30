@@ -1,0 +1,36 @@
+@Metadata.layer: #CORE
+
+@UI: {
+  headerInfo: {
+    typeName:       'Item Pricing',
+    typeNamePlural: 'Item Pricings',
+    title:       { type: #STANDARD, value: 'ConditionType' },
+    description: { type: #STANDARD, value: 'ConditionType' }
+  }
+}
+annotate entity ZC_ZSDE002_ITMPRC_LOG
+  with 
+{
+  @UI.facet: [
+    { id:       'ItemPricing',
+      purpose:  #STANDARD,
+      type:     #IDENTIFICATION_REFERENCE,
+      label:    'Item Pricing',
+      position: 10 }
+  ]
+  
+  @UI.hidden: true
+  ItemPricingUUID;
+
+  @UI.hidden: true
+  ItemUUID;
+  
+  @UI.hidden: true
+  OrderUUID;
+  
+  @UI: {
+    lineItem:       [{ position: 10, importance: #HIGH }],
+    identification: [{ position: 10 }]
+  }
+  ConditionType;
+}

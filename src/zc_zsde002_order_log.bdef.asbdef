@@ -1,0 +1,47 @@
+projection;
+strict ( 2 );
+
+define behavior for ZC_ZSDE002_ORDER_LOG alias OrderLog
+{
+  use create;
+  use update;
+  use delete;
+
+  use association _ItemLog { create; }
+  use association _OrderPricingLog { create; }
+  use association _OrderMessageLog { create; }
+}
+
+define behavior for ZC_ZSDE002_ITEM_LOG alias ItemLog
+{
+  use update;
+  use delete;
+
+  use association _OrderLog;
+  use association _ItemPricingLog { create; }
+}
+
+define behavior for ZC_ZSDE002_ITMPRC_LOG alias ItemPricingLog
+{
+  use update;
+  use delete;
+
+  use association _ItemLog;
+  use association _OrderLog;
+}
+
+define behavior for ZC_ZSDE002_ORDPRC_LOG alias OrderPricingLog
+{
+  use update;
+  use delete;
+
+  use association _OrderLog;
+}
+
+define behavior for ZC_ZSDE002_ORDMSG_LOG alias OrderMessageLog
+{
+  use update;
+  use delete;
+
+  use association _OrderLog;
+}

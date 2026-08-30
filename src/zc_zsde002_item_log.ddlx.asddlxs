@@ -1,0 +1,33 @@
+@Metadata.layer: #CORE
+
+@UI: {
+  headerInfo: {
+    typeName:       'Item',
+    typeNamePlural: 'Items',
+    title:       { type: #STANDARD, value: 'Item' },
+    description: { type: #STANDARD, value: 'Item' }
+  }
+}
+annotate entity ZC_ZSDE002_ITEM_LOG
+  with 
+{
+  @UI.facet: [
+    { id:       'Item',
+      purpose:  #STANDARD,
+      type:     #IDENTIFICATION_REFERENCE,
+      label:    'Item',
+      position: 10 }
+  ]
+  
+  @UI.hidden: true
+  ItemUUID;
+
+  @UI.hidden: true
+  OrderUUID;
+  
+  @UI: {
+    lineItem:       [{ position: 10, importance: #HIGH }],
+    identification: [{ position: 10 }]
+  }
+  Item;
+}

@@ -1,0 +1,39 @@
+@Metadata.layer: #CORE
+
+@UI: {
+  headerInfo: {
+    typeName:       'Message',
+    typeNamePlural: 'Messages',
+    title:       { type: #STANDARD, value: 'Status' },
+    description: { type: #STANDARD, value: 'Message' }
+  }
+}
+annotate entity ZC_ZSDE002_ORDMSG_LOG
+  with 
+{
+  @UI.facet: [
+    { id:       'OrderMessage',
+      purpose:  #STANDARD,
+      type:     #IDENTIFICATION_REFERENCE,
+      label:    'Order Message',
+      position: 10 }
+  ]
+  
+  @UI.hidden: true
+  OrderMessageUUID;
+
+  @UI.hidden: true
+  OrderUUID;
+  
+  @UI: {
+    lineItem:       [{ position: 10, importance: #HIGH }],
+    identification: [{ position: 10 }]
+  }
+  Status;
+  
+  @UI: {
+    lineItem:       [{ position: 22, importance: #HIGH }],
+    identification: [{ position: 20 }]
+  }
+  Message;
+}

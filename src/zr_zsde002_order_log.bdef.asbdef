@@ -1,0 +1,68 @@
+managed implementation in class zbp_r_zsde002_order_log unique;
+strict ( 2 );
+
+define behavior for ZR_ZSDE002_ORDER_LOG alias OrderLog
+persistent table ztsd_e002_order
+lock master
+authorization master ( instance )
+{
+  create ( authorization : global );
+  update;
+  delete;
+
+  field ( readonly ) OrderUUID;
+
+  association _ItemLog { create; }
+  association _OrderPricingLog { create; }
+  association _OrderMessageLog { create; }
+}
+
+define behavior for ZI_ZSDE002_ITEM_LOG alias ItemLog
+persistent table ztsd_e002_item
+lock dependent by _OrderLog
+authorization dependent by _OrderLog
+//etag master <field_name>
+{
+  update;
+  delete;
+  field ( readonly ) ItemUUID, OrderUUID;
+  association _OrderLog;
+  association _ItemPricingLog { create; }
+}
+
+define behavior for ZI_ZSDE002_ITMPRC_LOG alias ItemPricingLog
+persistent table ztsd_e002_itmprc
+lock dependent by _OrderLog
+authorization dependent by _OrderLog
+//etag master <field_name>
+{
+  update;
+  delete;
+  field ( readonly ) ItemPricingUUID, ItemUUID, OrderUUID;
+  association _ItemLog;
+  association _OrderLog;
+}
+
+define behavior for ZI_ZSDE002_ORDPRC_LOG alias OrderPricingLog
+persistent table ztsd_e002_ordprc
+lock dependent by _OrderLog
+authorization dependent by _OrderLog
+//etag master <field_name>
+{
+  update;
+  delete;
+  field ( readonly ) OrderPricingUUID, OrderUUID;
+  association _OrderLog;
+}
+
+define behavior for ZI_ZSDE002_ORDMSG_LOG alias OrderMessageLog
+persistent table ztsd_e002_ordmsg
+lock dependent by _OrderLog
+authorization dependent by _OrderLog
+//etag master <field_name>
+{
+  update;
+  delete;
+  field ( readonly ) OrderMessageUUID, OrderUUID;
+  association _OrderLog;
+}
