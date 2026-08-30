@@ -2,20 +2,37 @@
 @AccessControl.authorizationCheck: #NOT_REQUIRED
 @EndUserText.label: 'Sales Order Creation - Item Pricing Log'
 @Metadata.ignorePropagatedAnnotations: true
-define view entity ZI_ZSDE002_ITMPRC_LOG 
+define view entity ZI_ZSDE002_ITMPRC_LOG
   as select from ztsd_e002_itmprc
-  
+
   association to parent ZI_ZSDE002_ITEM_LOG as _ItemLog
     on $projection.ItemUUID = _ItemLog.ItemUUID
-    
+
   association [1..1] to ZR_ZSDE002_ORDER_LOG as _OrderLog
     on $projection.OrderUUID = _OrderLog.OrderUUID
 {
-  key item_pricing_uuid   as ItemPricingUUID,
-      item_uuid           as ItemUUID,
-      _OrderLog.OrderUUID as OrderUUID,
-      conditiontype       as ConditionType,
-      
+      @EndUserText.label: 'Item Pricing Log UUID'
+  key item_pricing_uuid      as ItemPricingUUID,
+
+      @EndUserText.label: 'Item Log UUID'
+      item_uuid              as ItemUUID,
+      @EndUserText.label: 'Order Log UUID'
+      order_uuid             as OrderUUID,
+
+      @EndUserText.label: 'Condition Type'
+      conditiontype          as ConditionType,
+      @EndUserText.label: 'Condition Amount'
+      conditionamount        as ConditionAmount,
+      @EndUserText.label: 'Condition Currency'
+      conditioncurrency      as ConditionCurrency,
+      @EndUserText.label: 'Pricing Unit'
+      conditionpricingunit   as ConditionPricingUnit,
+      @EndUserText.label: 'Unit of Measure'
+      conditionunitofmeasure as ConditionUnitOfMeasure,
+
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      local_last_changed_at  as LocalLastChangedAt,
+
       _ItemLog,
       _OrderLog
 }

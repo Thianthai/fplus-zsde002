@@ -3,34 +3,59 @@
 @UI: {
   headerInfo: {
     typeName:       'Item Pricing',
-    typeNamePlural: 'Item Pricings',
+    typeNamePlural: 'Item Pricing',
     title:       { type: #STANDARD, value: 'ConditionType' },
-    description: { type: #STANDARD, value: 'ConditionType' }
-  }
+    description: { type: #STANDARD, value: 'ConditionAmount' }
+  },
+  presentationVariant: [{ sortOrder: [{ by: 'ConditionType', direction: #ASC }] }]
 }
 annotate entity ZC_ZSDE002_ITMPRC_LOG
-  with 
+  with
 {
   @UI.facet: [
-    { id:       'ItemPricing',
-      purpose:  #STANDARD,
-      type:     #IDENTIFICATION_REFERENCE,
-      label:    'Item Pricing',
-      position: 10 }
+    { id: 'ItemPricing', purpose: #STANDARD, type: #IDENTIFICATION_REFERENCE,
+      label: 'Item Pricing', position: 10 }
   ]
-  
+
   @UI.hidden: true
   ItemPricingUUID;
 
   @UI.hidden: true
   ItemUUID;
-  
+
   @UI.hidden: true
   OrderUUID;
-  
+
   @UI: {
     lineItem:       [{ position: 10, importance: #HIGH }],
     identification: [{ position: 10 }]
   }
   ConditionType;
+
+  @UI: {
+    lineItem:       [{ position: 20, importance: #HIGH }],
+    identification: [{ position: 20 }]
+  }
+  ConditionAmount;
+
+  @UI: {
+    lineItem:       [{ position: 30, importance: #HIGH }],
+    identification: [{ position: 30 }]
+  }
+  ConditionCurrency;
+
+  @UI: {
+    lineItem:       [{ position: 40, importance: #MEDIUM }],
+    identification: [{ position: 40 }]
+  }
+  ConditionPricingUnit;
+
+  @UI: {
+    lineItem:       [{ position: 50, importance: #MEDIUM }],
+    identification: [{ position: 50 }]
+  }
+  ConditionUnitOfMeasure;
+
+  @UI.hidden: true
+  LocalLastChangedAt;
 }

@@ -5,29 +5,111 @@
     typeName:       'Item',
     typeNamePlural: 'Items',
     title:       { type: #STANDARD, value: 'Item' },
-    description: { type: #STANDARD, value: 'Item' }
-  }
+    description: { type: #STANDARD, value: 'MaterialNumber' }
+  },
+  presentationVariant: [{ sortOrder: [{ by: 'Item', direction: #ASC }] }]
 }
 annotate entity ZC_ZSDE002_ITEM_LOG
-  with 
+  with
 {
   @UI.facet: [
-    { id:       'Item',
-      purpose:  #STANDARD,
-      type:     #IDENTIFICATION_REFERENCE,
-      label:    'Item',
-      position: 10 }
+    { id: 'ItemTab', purpose: #STANDARD, type: #COLLECTION,
+      label: 'Item Detail', position: 10 },
+
+    { id: 'ItemData', parentId: 'ItemTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Item Data', position: 10, targetQualifier: 'ItemData' },
+
+    { id: 'ItemText', parentId: 'ItemTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Texts', position: 20, targetQualifier: 'ItemText' },
+
+    { id: 'ItemPricingFacet', purpose: #STANDARD, type: #LINEITEM_REFERENCE,
+      label: 'Item Pricing', position: 20, targetElement: '_ItemPricingLog' }
   ]
-  
+
   @UI.hidden: true
   ItemUUID;
 
   @UI.hidden: true
   OrderUUID;
-  
+
   @UI: {
-    lineItem:       [{ position: 10, importance: #HIGH }],
-    identification: [{ position: 10 }]
+    lineItem:   [{ position: 10, importance: #HIGH }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 10 }]
   }
   Item;
+
+  @UI: {
+    lineItem:   [{ position: 20, importance: #HIGH }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 20 }]
+  }
+  MaterialNumber;
+
+  @UI: {
+    lineItem:   [{ position: 30, importance: #MEDIUM }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 30 }]
+  }
+  CustomerMaterial;
+
+  @UI.fieldGroup: [{ qualifier: 'ItemData', position: 40 }]
+  ItemCategory;
+
+  @UI: {
+    lineItem:   [{ position: 40, importance: #HIGH }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 50 }]
+  }
+  RequestedQuantity;
+
+  @UI: {
+    lineItem:   [{ position: 50, importance: #HIGH }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 60 }]
+  }
+  SalesUnit;
+
+  @UI: {
+    lineItem:   [{ position: 60, importance: #MEDIUM }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 70 }]
+  }
+  Plant;
+
+  @UI: {
+    lineItem:   [{ position: 70, importance: #MEDIUM }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 80 }]
+  }
+  StorageLocation;
+
+  @UI: {
+    lineItem:   [{ position: 80, importance: #LOW }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 90 }]
+  }
+  Batch;
+
+  @UI.fieldGroup: [{ qualifier: 'ItemData', position: 100 }]
+  Route;
+
+  @UI.fieldGroup: [{ qualifier: 'ItemData', position: 110 }]
+  MatTaxClass;
+
+  @UI.fieldGroup: [{ qualifier: 'ItemData', position: 120 }]
+  SfItemIdRef;
+
+  @UI: {
+    multiLineText: true,
+    fieldGroup:    [{ qualifier: 'ItemText', position: 10 }]
+  }
+  SalesText;
+
+  @UI: {
+    multiLineText: true,
+    fieldGroup:    [{ qualifier: 'ItemText', position: 20 }]
+  }
+  UnitText;
+
+  @UI: {
+    multiLineText: true,
+    fieldGroup:    [{ qualifier: 'ItemText', position: 30 }]
+  }
+  PromotionIdText;
+
+  @UI.hidden: true
+  LocalLastChangedAt;
 }
