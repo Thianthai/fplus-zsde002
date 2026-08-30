@@ -778,10 +778,10 @@ CLASS zcl_zsde002_handler IMPLEMENTATION.
         RETURN.
     ENDTRY.
 
-*    " Mock-up Response for Postman Testing
-*    force_response( CHANGING cs_response      = ls_response
-*                             co_http_response = co_http_response ).
-*    RETURN.
+    " Force Response with mock-up body for Postman Testing and skip all process below
+    force_response( CHANGING cs_response      = ls_response
+                             co_http_response = co_http_response ).
+    RETURN.
 
     " Send payload but no detail for POST
     IF ls_request-order IS INITIAL.
