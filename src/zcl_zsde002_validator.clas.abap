@@ -43,29 +43,37 @@ CLASS zcl_zsde002_validator DEFINITION
 
     " ชื่อ component = ชื่อ column ใน table = ชื่อที่ส่งกลับใน error.field
     TYPES:
-      BEGIN OF ty_mandatory_field,
-        " Header
-        sales_order_temp_id  TYPE string,
-        process_type         TYPE string,
-        tran_type            TYPE string,
-        sales_order_type     TYPE string,
-        sales_organization   TYPE string,
-        distribution_channel TYPE string,
-        division             TYPE string,
-        sold_to_party        TYPE string,
-        ship_to_party        TYPE string,
-        bill_to_party        TYPE string,
-        payer                TYPE string,
-        customer_reference   TYPE string,
-        document_date        TYPE string,
-        shipping_conditions  TYPE string,
-        sf_header_id_ref     TYPE string,
-        " Item
-        material_number      TYPE string,
-        storage_location     TYPE string,
-        batch                TYPE string,
-        sf_item_id_ref       TYPE string,
-      END OF ty_mandatory_field.
+      BEGIN OF ty_mandatory_header,
+        " บังคับเสมอ
+        sales_order_temp_id           TYPE string,
+        process_type                  TYPE string,
+        tran_type                     TYPE string,
+        sales_order_type              TYPE string,
+        sales_organization            TYPE string,
+        distribution_channel          TYPE string,
+        division                      TYPE string,
+        sold_to_party                 TYPE string,
+        ship_to_party                 TYPE string,
+        bill_to_party                 TYPE string,
+        payer                         TYPE string,
+        customer_reference            TYPE string,
+        document_date                 TYPE string,
+        shipping_conditions           TYPE string,
+        sf_header_id_ref              TYPE string,
+        " บังคับตามเงื่อนไข
+        stock_van                     TYPE string,
+        payment_transaction_reference TYPE string,
+        tax_document_no               TYPE string,
+        order_reason                  TYPE string,
+        order_reason_text             TYPE string,
+      END OF ty_mandatory_header,
+
+      BEGIN OF ty_mandatory_item,
+        material_number  TYPE string,
+        storage_location TYPE string,
+        batch            TYPE string,
+        sf_item_id_ref   TYPE string,
+      END OF ty_mandatory_item.
 
 ENDCLASS.
 
@@ -85,57 +93,74 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
 
   METHOD check_order_mandatory.
 
-    DATA:
-      ls_mandatory_field TYPE ty_mandatory_field,
-      lt_missing_field   TYPE string_table.
+    DATA ls_mandatory TYPE ty_mandatory_header.
 
-    DATA(lo_struct) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( ls_mandatory_field ) ).
+    DATA(lo_struct) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( ls_mandatory ) ).
 
-    LOOP AT lo_struct->components ASSIGNING FIELD-SYMBOL(<lfs_components>).
+    LOOP AT lo_struct->components ASSIGNING FIELD-SYMBOL(<lfs_component>).
 
-      ASSIGN COMPONENT <lfs_components>-name OF STRUCTURE is_order TO FIELD-SYMBOL(<lv_value>).
-      IF sy-subrc = 0 AND <lv_value> IS INITIAL.
-
-        " TODO 5 branch ข้างล่างยังเป็น dead code — component เหล่านี้ยังไม่มีใน
-        "      ty_mandatory_field จึงไม่มีทางถูก LOOP ถึง (finding ข้อ 8)
-        IF <lfs_components>-name = 'STOCK_VAN'.
-          IF is_order-process_type IN is_param-lr_processtype_stockvan.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSEIF <lfs_components>-name = 'PAYMENT_TRANSACTION_REFERENCE'.
-          IF is_order-process_type IN is_param-lr_processtype_zt01.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSEIF <lfs_components>-name = 'TAX_DOCUMENT_NO'.
-          IF is_order-process_type IN is_param-lr_processtype_zt02.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSEIF <lfs_components>-name = 'ORDER_REASON'.
-          IF is_order-tran_type IN is_param-lr_trantype_reason.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSEIF <lfs_components>-name = 'ORDER_REASON_TEXT'.
-          IF is_order-order_reason IN is_param-lr_processtype_zt04.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSE.
-          APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-        ENDIF.
+      ASSIGN COMPONENT <lfs_component>-name OF STRUCTURE is_order TO FIELD-SYMBOL(<lv_value>).
+      IF sy-subrc <> 0 OR <lv_value> IS NOT INITIAL.
+        CONTINUE.
       ENDIF.
 
-    ENDLOOP.
+      DATA(lv_field) = CONV string( <lfs_component>-name ).
 
-    LOOP AT lt_missing_field ASSIGNING FIELD-SYMBOL(<lfs_missing_field>).
-      APPEND VALUE #( msgno = '100'
-                      msgty = 'E'
-                      msgv1 = <lfs_missing_field>
-                      field = <lfs_missing_field>
-                    ) TO rt_finding.
+      CASE lv_field.
+
+        WHEN 'STOCK_VAN'.
+          IF is_order-process_type IN is_param-lr_processtype_stockvan.
+            APPEND VALUE #( msgno = '101'
+                            msgty = 'E'
+                            msgv1 = lv_field
+                            msgv2 = |{ is_order-process_type }|
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN 'PAYMENT_TRANSACTION_REFERENCE'.
+          IF is_order-process_type IN is_param-lr_processtype_zt01.
+            APPEND VALUE #( msgno = '101'
+                            msgty = 'E'
+                            msgv1 = lv_field
+                            msgv2 = |{ is_order-process_type }|
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN 'TAX_DOCUMENT_NO'.
+          IF is_order-process_type IN is_param-lr_processtype_zt02.
+            APPEND VALUE #( msgno = '101'
+                            msgty = 'E'
+                            msgv1 = lv_field
+                            msgv2 = |{ is_order-process_type }|
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN 'ORDER_REASON'.
+          IF is_order-tran_type IN is_param-lr_trantype_reason.
+            APPEND VALUE #( msgno = '102'
+                            msgty = 'E'
+                            msgv1 = lv_field
+                            msgv2 = |{ is_order-tran_type }|
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN 'ORDER_REASON_TEXT'.
+          IF is_order-order_reason IN is_param-lr_order_reason.
+            APPEND VALUE #( msgno = '103'
+                            msgty = 'E'
+                            msgv1 = lv_field
+                            msgv2 = |{ is_order-order_reason }|
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN OTHERS.
+          APPEND VALUE #( msgno = '100'
+                          msgty = 'E'
+                          msgv1 = lv_field
+                          field = lv_field ) TO rt_finding.
+
+      ENDCASE.
+
     ENDLOOP.
 
   ENDMETHOD.
@@ -143,51 +168,67 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
 
   METHOD check_item_mandatory.
 
-    DATA:
-      ls_mandatory_field TYPE ty_mandatory_field,
-      lt_missing_field   TYPE string_table.
+    DATA ls_mandatory TYPE ty_mandatory_item.
 
-    DATA(lo_struct) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( ls_mandatory_field ) ).
+    DATA(lo_struct) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( ls_mandatory ) ).
 
-    LOOP AT lo_struct->components ASSIGNING FIELD-SYMBOL(<lfs_components>).
+    DATA(lv_item) = |{ is_item-item }|.
 
-      ASSIGN COMPONENT <lfs_components>-name OF STRUCTURE is_item TO FIELD-SYMBOL(<lv_value>).
-      IF sy-subrc = 0 AND <lv_value> IS INITIAL.
+    LOOP AT lo_struct->components ASSIGNING FIELD-SYMBOL(<lfs_component>).
 
-        IF <lfs_components>-name = 'MATERIAL_NUMBER'.
-          IF is_item-customer_material IS INITIAL.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSEIF <lfs_components>-name = 'STORAGE_LOCATION'.
-          IF is_order-process_type IN is_param-lr_processtype_sloc.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSEIF <lfs_components>-name = 'BATCH'.
-          IF is_order-process_type IN is_param-lr_processtype_batch.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSEIF <lfs_components>-name = 'SF_ITEM_ID_REF'.
-          IF is_order-process_type IN is_param-lr_processtype_sfid.
-            APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-          ENDIF.
-
-        ELSE.
-          APPEND CONV string( <lfs_components>-name ) TO lt_missing_field.
-
-        ENDIF.
-
+      ASSIGN COMPONENT <lfs_component>-name OF STRUCTURE is_item TO FIELD-SYMBOL(<lv_value>).
+      IF sy-subrc <> 0 OR <lv_value> IS NOT INITIAL.
+        CONTINUE.
       ENDIF.
-    ENDLOOP.
 
-    LOOP AT lt_missing_field ASSIGNING FIELD-SYMBOL(<lfs_missing_field>).
-      APPEND VALUE #( msgno = '100'
-                      msgty = 'E'
-                      msgv1 = <lfs_missing_field>
-                      field = <lfs_missing_field>
-                    ) TO rt_finding.
+      DATA(lv_field) = CONV string( <lfs_component>-name ).
+
+      CASE lv_field.
+
+        WHEN 'MATERIAL_NUMBER'.
+          IF is_item-customer_material IS INITIAL.
+            APPEND VALUE #( msgno = '151'
+                            msgty = 'E'
+                            msgv1 = lv_item
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN 'STORAGE_LOCATION'.
+          IF is_order-process_type IN is_param-lr_processtype_sloc.
+            APPEND VALUE #( msgno = '150'
+                            msgty = 'E'
+                            msgv1 = lv_item
+                            msgv2 = lv_field
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN 'BATCH'.
+          IF is_order-process_type IN is_param-lr_processtype_batch.
+            APPEND VALUE #( msgno = '150'
+                            msgty = 'E'
+                            msgv1 = lv_item
+                            msgv2 = lv_field
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN 'SF_ITEM_ID_REF'.
+          IF is_order-process_type IN is_param-lr_processtype_sfid.
+            APPEND VALUE #( msgno = '150'
+                            msgty = 'E'
+                            msgv1 = lv_item
+                            msgv2 = lv_field
+                            field = lv_field ) TO rt_finding.
+          ENDIF.
+
+        WHEN OTHERS.
+          APPEND VALUE #( msgno = '150'
+                          msgty = 'E'
+                          msgv1 = lv_item
+                          msgv2 = lv_field
+                          field = lv_field ) TO rt_finding.
+
+      ENDCASE.
+
     ENDLOOP.
 
   ENDMETHOD.

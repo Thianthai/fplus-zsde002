@@ -62,7 +62,6 @@ CLASS zcl_zsde002_processor DEFINITION
         lr_processtype_online   TYPE RANGE OF ty_order-process_type,
         lr_processtype_zt01     TYPE RANGE OF ty_order-process_type,
         lr_processtype_zt02     TYPE RANGE OF ty_order-process_type,
-        lr_processtype_zt04     TYPE RANGE OF ty_order-process_type,
         lr_processtype_zt09     TYPE RANGE OF ty_order-process_type,
         lr_processtype_sloc     TYPE RANGE OF ty_order-process_type,
         lr_processtype_batch    TYPE RANGE OF ty_order-process_type,
@@ -93,13 +92,13 @@ CLASS zcl_zsde002_processor DEFINITION
       IMPORTING iv_request_id TYPE ztsd_e002_order-request_id
       CHANGING  cs_order      TYPE ty_order
                 ct_pricing    TYPE tt_order_pricing
-                cs_result     TYPE ty_result.
+                ct_error      TYPE tt_error.
 
     METHODS normalize_item
       IMPORTING is_order   TYPE ty_order
       CHANGING  cs_item    TYPE ty_item
                 ct_pricing TYPE tt_item_pricing
-                cs_result  TYPE ty_result.
+                ct_error   TYPE tt_error.
 
     METHODS validate_order
       IMPORTING is_order        TYPE ty_order
@@ -254,7 +253,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       normalize_order( EXPORTING iv_request_id = CONV #( ls_request-request_id )
                        CHANGING  cs_order      = ls_order
                                  ct_pricing    = lt_order_pricings
-                                 cs_result     = rs_result ).
+                                 ct_error      = lt_error ).
 
       LOOP AT <lfs_order>-items ASSIGNING FIELD-SYMBOL(<lfs_item>).
         CLEAR: ls_item, lt_item_pricing[].
@@ -264,11 +263,20 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         normalize_item( EXPORTING is_order   = ls_order
                         CHANGING  cs_item    = ls_item
                                   ct_pricing = lt_item_pricing
-                                  cs_result  = rs_result ).
+                                  ct_error   = lt_error ).
 
         APPEND ls_item TO lt_item.
         APPEND LINES OF lt_item_pricing TO lt_item_pricings.
       ENDLOOP.
+
+      " normalize ล้ม = ไม่มี UUID = เขียน log ไม่ได้ ข้าม order นี้ไปเลย
+      IF lt_error IS NOT INITIAL.
+        rs_result-failed = rs_result-failed + 1.
+        APPEND to_order_out( is_order = ls_order
+                             it_error = lt_error
+                           ) TO rs_result-orders.
+        CONTINUE.
+      ENDIF.
 
       " 3.2 Raw request of this order ----------------------------------
       ls_order-request_body = to_request_body( <lfs_order> ).
@@ -346,6 +354,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     TRY.
         io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
                                        iv_param_name = 'PROCESS_TYPE'
+                             IMPORTING et_range      = cs_param-lr_processtype ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'CASH_VAN_SALES'
                              IMPORTING et_range      = cs_param-lr_processtype_stockvan ).
 
@@ -409,12 +421,34 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO cs_result-errors.
     ENDTRY.
 
+    " range ว่างไม่ raise exception แต่ทำให้ validation เงียบไปทั้งหมด ต้องดักเอง
+    IF cs_param-lr_processtype IS INITIAL.
+      APPEND VALUE #( msgno = '403'
+                      msgty = 'E'
+                      msgtx = message_text( iv_msgno = '403'
+                                            iv_v1    = `PROCESS_TYPE`
+                                            iv_v2    = `*`
+                                            iv_v3    = `range is empty` )
+                    ) TO cs_result-errors.
+    ENDIF.
+
   ENDMETHOD.
 
 
   METHOD normalize_order.
 
     " 1. Order ---------------------------------------------------------
+    " Administrative Data — ต้องมาก่อน UUID เพราะถ้า UUID ล้มแล้ว RETURN
+    " to_order_out ยังต้องใช้ created_at ทำ processing date/time
+    DATA(lv_user) = cl_abap_context_info=>get_user_technical_name( ).
+    GET TIME STAMP FIELD DATA(lv_now).
+
+    cs_order-created_by            = lv_user.
+    cs_order-created_at            = lv_now.
+    cs_order-last_changed_by       = lv_user.
+    cs_order-last_changed_at       = lv_now.
+    cs_order-local_last_changed_at = lv_now.
+
     " Order UUID
     TRY.
         cs_order-order_uuid = cl_system_uuid=>create_uuid_x16_static( ).
@@ -424,7 +458,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                         msgtx            = message_text( iv_msgno = '402'
                                                          iv_v1    = lo_uuid_error->get_text( ) )
                         sf_header_id_ref = cs_order-sf_header_id_ref
-                      ) TO cs_result-errors.
+                      ) TO ct_error.
         RETURN.
     ENDTRY.
 
@@ -439,9 +473,6 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     cs_order-stock_van     = zcl_zsde002_validator=>to_internal_customer( cs_order-stock_van ).
 
     " Administrative Data
-    DATA(lv_user) = cl_abap_context_info=>get_user_technical_name( ).
-    GET TIME STAMP FIELD DATA(lv_now).
-
     cs_order-created_by            = lv_user.
     cs_order-created_at            = lv_now.
     cs_order-last_changed_by       = lv_user.
@@ -460,7 +491,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                           msgtx            = message_text( iv_msgno = '402'
                                                            iv_v1    = lo_uuid_error->get_text( ) )
                           sf_header_id_ref = cs_order-sf_header_id_ref
-                        ) TO cs_result-errors.
+                        ) TO ct_error.
           RETURN.
       ENDTRY.
 
@@ -491,7 +522,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                         msgtx            = message_text( iv_msgno = '402'
                                                          iv_v1    = lo_uuid_error->get_text( ) )
                         sf_header_id_ref = is_order-sf_header_id_ref
-                      ) TO cs_result-errors.
+                      ) TO ct_error.
         RETURN.
     ENDTRY.
 
@@ -517,7 +548,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                           msgtx            = message_text( iv_msgno = '402'
                                                            iv_v1    = lo_uuid_error->get_text( ) )
                           sf_header_id_ref = is_order-sf_header_id_ref
-                        ) TO cs_result-errors.
+                        ) TO ct_error.
           RETURN.
       ENDTRY.
 
@@ -545,6 +576,18 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                                                                  is_param = gs_param )
                                iv_sf_header_id_ref = is_order-sf_header_id_ref
                              ) TO rt_error.
+
+    " 2. Validate Process Type -----------------------------------------
+    IF  is_order-process_type IS NOT INITIAL
+    AND is_order-process_type NOT IN gs_param-lr_processtype.
+      APPEND VALUE #( msgno            = '303'
+                      msgty            = 'E'
+                      msgtx            = message_text( iv_msgno = '303'
+                                                       iv_v1    = |{ is_order-process_type }| )
+                      sf_header_id_ref = is_order-sf_header_id_ref
+                      field            = zcl_zsde002_json=>to_json_name( 'process_type' )
+                    ) TO rt_error.
+    ENDIF.
 
     " 3. Validate Master Data ------------------------------------------
     APPEND LINES OF check_order_master_data( is_order   = is_order
