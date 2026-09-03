@@ -1,0 +1,963 @@
+CLASS zcl_zsde002_processor DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    TYPES:
+      ty_request       TYPE zcl_zsde002_http=>ty_request,
+      ty_request_order TYPE zcl_zsde002_http=>ty_request-orders,
+
+      ty_order         TYPE ztsd_e002_order,
+      ty_order_pricing TYPE ztsd_e002_ordprc,
+      tt_order_pricing TYPE STANDARD TABLE OF ztsd_e002_ordprc WITH EMPTY KEY,
+
+      ty_item          TYPE ztsd_e002_item,
+      tt_item          TYPE STANDARD TABLE OF ztsd_e002_item WITH EMPTY KEY,
+      ty_item_pricing  TYPE ztsd_e002_itmprc,
+      tt_item_pricing  TYPE STANDARD TABLE OF ztsd_e002_itmprc WITH EMPTY KEY.
+
+    TYPES:
+      ty_response  TYPE zcl_zsde002_http=>ty_response,
+      tt_order_out TYPE zcl_zsde002_http=>tt_order_out.
+
+    TYPES:
+      BEGIN OF ty_error,
+        msgno         TYPE symsgno,
+        msgtx         TYPE string,
+        sfheaderidref TYPE ty_order-sfheaderidref,
+        sfitemidref   TYPE ty_item-sfitemidref,
+        field         TYPE string,
+      END OF ty_error,
+      tt_error TYPE STANDARD TABLE OF ty_error WITH EMPTY KEY,
+
+      BEGIN OF ty_result,
+        request_id TYPE ty_response-request_id,
+        passed     TYPE ty_response-passed,
+        failed     TYPE ty_response-failed,
+        errors     TYPE tt_error,
+        orders     TYPE ty_response-orders,
+      END OF ty_result,
+
+      BEGIN OF ty_param,
+        lr_processtype          TYPE RANGE OF ty_order-processtype,
+        lr_processtype_stockvan TYPE RANGE OF ty_order-processtype,
+        lr_processtype_sfid     TYPE RANGE OF ty_order-processtype,
+        lr_processtype_edi      TYPE RANGE OF ty_order-processtype,
+        lr_processtype_online   TYPE RANGE OF ty_order-processtype,
+        lr_processtype_zt01     TYPE RANGE OF ty_order-processtype,
+        lr_processtype_zt02     TYPE RANGE OF ty_order-processtype,
+        lr_processtype_zt04     TYPE RANGE OF ty_order-processtype,
+        lr_processtype_zt09     TYPE RANGE OF ty_order-processtype,
+        lr_processtype_sloc     TYPE RANGE OF ty_order-processtype,
+        lr_processtype_batch    TYPE RANGE OF ty_order-processtype,
+        lr_trantype_reason      TYPE RANGE OF ty_order-trantype,
+        lr_order_reason         TYPE RANGE OF I_SalesDocument-SDDocumentReason,
+      END OF ty_param.
+
+    METHODS constructor
+      IMPORTING io_master_data TYPE REF TO zif_zsde002_master_data OPTIONAL
+                io_param       TYPE REF TO zcl_param               OPTIONAL.
+
+    METHODS process
+      IMPORTING iv_body          TYPE string
+      RETURNING VALUE(rs_result) TYPE ty_result.
+
+  PRIVATE SECTION.
+
+    DATA go_master_data TYPE REF TO zif_zsde002_master_data.
+    DATA go_param       TYPE REF TO zcl_param.
+    DATA gs_param       TYPE ty_param.
+
+    METHODS get_constant_param
+      IMPORTING io_param  TYPE REF TO zcl_param
+      CHANGING  cs_param  TYPE ty_param
+                cs_result TYPE ty_result.
+
+    METHODS normalize_order
+      IMPORTING iv_request_id TYPE ztsd_e002_order-request_id
+      CHANGING  cs_order      TYPE ty_order
+                ct_pricing    TYPE tt_order_pricing
+                cs_result     TYPE ty_result.
+
+    METHODS normalize_item
+      IMPORTING is_order   TYPE ty_order
+      CHANGING  cs_item    TYPE ty_item
+                ct_pricing TYPE tt_item_pricing
+                cs_result  TYPE ty_result.
+
+    METHODS validate_order
+      IMPORTING is_order        TYPE ty_order
+                it_pricing      TYPE tt_order_pricing
+      RETURNING VALUE(rt_error) TYPE tt_error.
+
+    METHODS validate_item
+      IMPORTING is_order        TYPE ty_order
+                is_item         TYPE ty_item
+                it_pricing      TYPE tt_item_pricing
+      RETURNING VALUE(rt_error) TYPE tt_error.
+
+    METHODS check_order_master_data
+      IMPORTING is_order        TYPE ty_order
+                it_pricing      TYPE tt_order_pricing
+      RETURNING VALUE(rt_error) TYPE tt_error.
+
+    METHODS check_item_master_data
+      IMPORTING is_order        TYPE ty_order
+                is_item         TYPE ty_item
+                it_pricing      TYPE tt_item_pricing
+      RETURNING VALUE(rt_error) TYPE tt_error.
+
+    METHODS check_duplicate
+      IMPORTING is_order         TYPE ty_order
+                it_item          TYPE tt_item
+      RETURNING VALUE(rt_error) TYPE tt_error.
+
+    METHODS save
+      IMPORTING is_order         TYPE ty_order
+                it_order_pricing TYPE tt_order_pricing
+                it_item          TYPE tt_item
+                it_item_pricing  TYPE tt_item_pricing
+      RETURNING VALUE(rv_result) TYPE abap_bool.
+
+    METHODS post
+      IMPORTING is_order         TYPE ty_order
+                it_item          TYPE tt_item
+      RETURNING VALUE(rv_result) TYPE abap_bool.
+
+    "! แปลง finding ของ validator เป็น error ที่พร้อมส่งกลับ (ชื่อ field เป็น JSON แล้ว)
+    METHODS to_errors
+      IMPORTING it_finding       TYPE zcl_zsde002_validator=>tt_finding
+                iv_sfheaderidref TYPE ty_order-sfheaderidref OPTIONAL
+                iv_sfitemidref   TYPE ty_item-sfitemidref    OPTIONAL
+      RETURNING VALUE(rt_error)  TYPE tt_error.
+
+    METHODS message_text
+      IMPORTING iv_msgno         TYPE symsgno
+                iv_v1            TYPE string OPTIONAL
+                iv_v2            TYPE string OPTIONAL
+                iv_v3            TYPE string OPTIONAL
+                iv_v4            TYPE string OPTIONAL
+      RETURNING VALUE(rv_result) TYPE string.
+
+ENDCLASS.
+
+
+
+CLASS zcl_zsde002_processor IMPLEMENTATION.
+
+ METHOD constructor.
+
+    go_master_data = COND #( WHEN io_master_data IS BOUND THEN io_master_data
+                             ELSE NEW zcl_zsde002_master_data( ) ).
+
+    go_param = COND #( WHEN io_param IS BOUND THEN io_param
+                       ELSE NEW zcl_param( iv_company_code = '1000'
+                                           iv_module_id    = 'SD' ) ).
+
+  ENDMETHOD.
+
+
+  METHOD process.
+
+    DATA ls_request        TYPE ty_request.
+    DATA ls_order          TYPE ty_order.
+    DATA lt_order_pricings TYPE tt_order_pricing.
+    DATA ls_item           TYPE ty_item.
+    DATA lt_item           TYPE tt_item.
+    DATA lt_item_pricing   TYPE tt_item_pricing.
+    DATA lt_item_pricings  TYPE tt_item_pricing.
+    DATA lt_error          TYPE tt_error.
+
+    " 0. Constant Parameter --------------------------------------------
+    get_constant_param( EXPORTING io_param  = go_param
+                        CHANGING  cs_param  = gs_param
+                                  cs_result = rs_result ).
+
+    IF rs_result-errors[] IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
+    " 1. Parse ---------------------------------------------------------
+    TRY.
+        zcl_zsde002_json=>parse_json_request( EXPORTING iv_body    = iv_body
+                                              IMPORTING es_request = ls_request ).
+      CATCH zcx_zsde002_error INTO DATA(lcx_error).
+        APPEND VALUE #( msgno = '012'
+                        msgtx = message_text( '012' )
+                      ) TO rs_result-errors.
+        RETURN.
+    ENDTRY.
+
+    " 2. Request ID ----------------------------------------------------
+    IF ls_request-request_id IS INITIAL.
+      ls_request-request_id = |{ cl_abap_context_info=>get_system_date( ) }_| &&
+                              |{ cl_abap_context_info=>get_system_time( ) }|.
+    ENDIF.
+
+    rs_result-request_id = ls_request-request_id.
+
+    " 3. Process -------------------------------------------------------
+    LOOP AT ls_request-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
+
+      CLEAR: ls_order,
+             lt_order_pricings[],
+             ls_item,
+             lt_item_pricing[],
+             lt_item_pricings[],
+             lt_error[].
+
+      " 3.1 Normalize --------------------------------------------------
+      ls_order          = CORRESPONDING #( <lfs_order> ).
+      lt_order_pricings = CORRESPONDING #( <lfs_order>-pricings ).
+
+      normalize_order( EXPORTING iv_request_id = CONV #( ls_request-request_id )
+                       CHANGING  cs_order   = ls_order
+                                 ct_pricing = lt_order_pricings
+                                 cs_result  = rs_result ).
+
+      LOOP AT <lfs_order>-items ASSIGNING FIELD-SYMBOL(<lfs_item>).
+        CLEAR: ls_item, lt_item_pricing[].
+        ls_item         = CORRESPONDING #( <lfs_item> ).
+        lt_item_pricing = CORRESPONDING #( <lfs_item>-pricings ).
+
+        normalize_item( EXPORTING is_order   = ls_order
+                        CHANGING  cs_item    = ls_item
+                                  ct_pricing = lt_item_pricing
+                                  cs_result  = rs_result ).
+
+        APPEND ls_item TO lt_item.
+        APPEND LINES OF lt_item_pricing TO lt_item_pricings.
+      ENDLOOP.
+
+      " 3.2 Validate ---------------------------------------------------
+      lt_error = VALUE #( BASE lt_error
+                          FOR ls_order_error IN validate_order( is_order   = ls_order
+                                                                it_pricing = lt_order_pricings )
+                        ( CORRESPONDING #( ls_order_error ) ) ).
+
+      LOOP AT <lfs_order>-items ASSIGNING <lfs_item>.
+        CLEAR: ls_item, lt_item_pricing[].
+        ls_item         = CORRESPONDING #( <lfs_item> ).
+        lt_item_pricing = CORRESPONDING #( <lfs_item>-pricings ).
+
+        lt_error = VALUE #( BASE lt_error
+                            FOR ls_item_error IN validate_item( is_order   = ls_order
+                                                                is_item    = ls_item
+                                                                it_pricing = lt_item_pricing )
+                          ( CORRESPONDING #( ls_item_error ) ) ).
+      ENDLOOP.
+
+      " 3.3 Save -------------------------------------------------------
+      IF lt_error IS INITIAL.
+        IF save( is_order         = ls_order
+                 it_order_pricing = lt_order_pricings
+                 it_item          = lt_item
+                 it_item_pricing  = lt_item_pricings ) = abap_false.
+
+          APPEND VALUE #( msgno         = '000'
+                          msgtx         = message_text( iv_msgno = '000'
+                                                        iv_v1    = `Database insert failed` )
+                          sfheaderidref = ls_order-sfheaderidref
+                        ) TO lt_error.
+        ENDIF.
+      ENDIF.
+
+      " 3.4 Post -------------------------------------------------------
+      IF lt_error IS INITIAL.
+        IF post( is_order = ls_order
+                 it_item  = lt_item ) = abap_false.
+
+          APPEND VALUE #( msgno         = '000'
+                          msgtx         = message_text( iv_msgno = '000'
+                                                        iv_v1    = `Sales order create failed` )
+                          sfheaderidref = ls_order-sfheaderidref
+                        ) TO lt_error.
+        ENDIF.
+      ENDIF.
+
+      IF lt_error IS INITIAL.
+        rs_result-passed = rs_result-passed + 1.
+      ELSE.
+        rs_result-failed = rs_result-failed + 1.
+        APPEND LINES OF lt_error TO rs_result-errors.
+      ENDIF.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD get_constant_param.
+
+    TRY.
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'CASH_VAN_SALES'
+                             IMPORTING et_range      = cs_param-lr_processtype_stockvan ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'SFID'
+                             IMPORTING et_range      = cs_param-lr_processtype_sfid ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'EDI'
+                             IMPORTING et_range      = cs_param-lr_processtype_edi ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'ONLINE'
+                             IMPORTING et_range      = cs_param-lr_processtype_online ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'ZT01'
+                             IMPORTING et_range      = cs_param-lr_processtype_zt01 ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'ZT02'
+                             IMPORTING et_range      = cs_param-lr_processtype_zt02 ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'ZT09'
+                             IMPORTING et_range      = cs_param-lr_processtype_zt09 ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'SLOC'
+                             IMPORTING et_range      = cs_param-lr_processtype_sloc ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'PROCESS_TYPE'
+                                       iv_param_ext  = 'BATCH'
+                             IMPORTING et_range      = cs_param-lr_processtype_batch ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'TRAN_TYPE'
+                                       iv_param_ext  = 'REASON'
+                             IMPORTING et_range      = cs_param-lr_trantype_reason ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+                                       iv_param_name = 'ORDER_REASON'
+                                       iv_param_ext  = 'ZT04'
+                             IMPORTING et_range      = cs_param-lr_order_reason ).
+
+      CATCH zcx_param INTO DATA(lcx_param).
+        APPEND VALUE #( msgno = '000'
+                        msgtx = message_text( iv_msgno = '000'
+                                              iv_v1    = |ERROR ({ lcx_param->gv_reason }): { lcx_param->get_text( ) }| )
+                      ) TO cs_result-errors.
+    ENDTRY.
+
+  ENDMETHOD.
+
+
+  METHOD normalize_order.
+
+    " 1. Order ---------------------------------------------------------
+    " Order UUID
+    TRY.
+        cs_order-order_uuid = cl_system_uuid=>create_uuid_x16_static( ).
+      CATCH cx_uuid_error INTO DATA(lo_uuid_error).
+        APPEND VALUE #( msgno         = '000'
+                        msgtx         = lo_uuid_error->get_longtext( )
+                        sfheaderidref = cs_order-sfheaderidref
+                      ) TO cs_result-errors.
+        RETURN.
+    ENDTRY.
+
+    " Request ID
+    cs_order-request_id = iv_request_id.
+
+    " Customer
+    cs_order-soldtoparty = zcl_zsde002_validator=>to_internal_customer( cs_order-soldtoparty ).
+    cs_order-shiptoparty = zcl_zsde002_validator=>to_internal_customer( cs_order-shiptoparty ).
+    cs_order-billtoparty = zcl_zsde002_validator=>to_internal_customer( cs_order-billtoparty ).
+    cs_order-payer       = zcl_zsde002_validator=>to_internal_customer( cs_order-payer ).
+    cs_order-stockvan    = zcl_zsde002_validator=>to_internal_customer( cs_order-stockvan ).
+
+    " Administrative Data
+    DATA(lv_user) = cl_abap_context_info=>get_user_technical_name( ).
+    GET TIME STAMP FIELD DATA(lv_now).
+
+    cs_order-created_by            = lv_user.
+    cs_order-created_at            = lv_now.
+    cs_order-last_changed_by       = lv_user.
+    cs_order-last_changed_at       = lv_now.
+    cs_order-local_last_changed_at = lv_now.
+
+    " 2. Order Pricing -------------------------------------------------
+    LOOP AT ct_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
+
+      " Order Pricing UUID
+      TRY.
+          <lfs_pricing>-order_pricing_uuid = cl_system_uuid=>create_uuid_x16_static( ).
+        CATCH cx_uuid_error INTO lo_uuid_error.
+          APPEND VALUE #( msgno         = '000'
+                          msgtx         = lo_uuid_error->get_longtext( )
+                          sfheaderidref = cs_order-sfheaderidref
+                        ) TO cs_result-errors.
+          RETURN.
+      ENDTRY.
+
+      " Order UUID
+      <lfs_pricing>-order_uuid = cs_order-order_uuid.
+
+      " Administrative Data
+      <lfs_pricing>-created_by            = cs_order-created_by.
+      <lfs_pricing>-created_at            = cs_order-created_at.
+      <lfs_pricing>-last_changed_by       = cs_order-last_changed_by.
+      <lfs_pricing>-local_last_changed_at = cs_order-local_last_changed_at.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD normalize_item.
+
+    " 1. Item ----------------------------------------------------------
+    " Item UUID
+    TRY.
+        cs_item-item_uuid = cl_system_uuid=>create_uuid_x16_static( ).
+      CATCH cx_uuid_error INTO DATA(lo_uuid_error).
+        APPEND VALUE #( msgno         = '000'
+                        msgtx         = lo_uuid_error->get_longtext( )
+                        sfheaderidref = is_order-sfheaderidref
+                        sfitemidref   = cs_item-sfitemidref
+                      ) TO cs_result-errors.
+        RETURN.
+    ENDTRY.
+
+    " Order UUID
+    cs_item-order_uuid = is_order-order_uuid.
+
+    " Administrative Data
+    cs_item-created_by            = is_order-created_by.
+    cs_item-created_at            = is_order-created_at.
+    cs_item-last_changed_by       = is_order-last_changed_by.
+    cs_item-local_last_changed_at = is_order-local_last_changed_at.
+
+    " 2. Item Pricing --------------------------------------------------
+    LOOP AT ct_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
+
+      " Item Pricing UUID
+      TRY.
+          <lfs_pricing>-item_pricing_uuid = cl_system_uuid=>create_uuid_x16_static( ).
+        CATCH cx_uuid_error INTO lo_uuid_error.
+          APPEND VALUE #( msgno         = '000'
+                          msgtx         = lo_uuid_error->get_longtext( )
+                          sfheaderidref = is_order-sfheaderidref
+                          sfitemidref   = cs_item-sfitemidref
+                        ) TO cs_result-errors.
+          RETURN.
+      ENDTRY.
+
+      " Order UUID
+      <lfs_pricing>-item_uuid  = cs_item-item_uuid.
+      <lfs_pricing>-order_uuid = cs_item-order_uuid.
+
+      " Administrative Data
+      <lfs_pricing>-created_by            = cs_item-created_by.
+      <lfs_pricing>-created_at            = cs_item-created_at.
+      <lfs_pricing>-last_changed_by       = cs_item-last_changed_by.
+      <lfs_pricing>-local_last_changed_at = cs_item-local_last_changed_at.
+
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD validate_order.
+
+    " 1. Validate Mandatory --------------------------------------------
+    APPEND LINES OF to_errors( it_finding       = zcl_zsde002_validator=>check_order_mandatory(
+                                                    EXPORTING is_order = is_order
+                                                              is_param = gs_param )
+                               iv_sfheaderidref = is_order-sfheaderidref
+                             ) TO rt_error.
+
+    " 3. Validate Master Data ------------------------------------------
+    APPEND LINES OF check_order_master_data( is_order   = is_order
+                                             it_pricing = it_pricing
+                                           ) TO rt_error.
+
+  ENDMETHOD.
+
+
+  METHOD validate_item.
+
+    " 1. Validate Mandatory --------------------------------------------
+    APPEND LINES OF to_errors( it_finding       = zcl_zsde002_validator=>check_item_mandatory(
+                                                    EXPORTING is_order = is_order
+                                                              is_item  = is_item
+                                                              is_param = gs_param )
+                               iv_sfheaderidref = is_order-sfheaderidref
+                               iv_sfitemidref   = is_item-sfitemidref
+                             ) TO rt_error.
+
+    " 2. Validate Master Data ------------------------------------------
+    APPEND LINES OF check_item_master_data( is_order   = is_order
+                                            is_item    = is_item
+                                            it_pricing = it_pricing
+                                          ) TO rt_error.
+
+  ENDMETHOD.
+
+
+  METHOD check_order_master_data.
+
+    " For Conversion
+    DATA ls_salesarea         TYPE zif_zsde002_master_data=>ty_sales_area.
+    DATA ls_customersalesarea TYPE zif_zsde002_master_data=>ty_cust_sales_area.
+    DATA lv_salesdocumenttype TYPE zif_zsde002_master_data=>ty_salesdocumenttype.
+    DATA lv_paymentterms      TYPE zif_zsde002_master_data=>ty_paymentterms.
+    DATA lv_currency          TYPE zif_zsde002_master_data=>ty_currency.
+    DATA lv_conditiontype     TYPE zif_zsde002_master_data=>ty_conditiontype.
+
+    " Key Table
+    DATA lt_sales_area        TYPE zif_zsde002_master_data=>tt_sales_area.
+    DATA lt_cust_sales_area   TYPE zif_zsde002_master_data=>tt_cust_sales_area.
+    DATA lt_salesdocumenttype TYPE zif_zsde002_master_data=>tt_salesdocumenttype.
+    DATA lt_paymentterms      TYPE zif_zsde002_master_data=>tt_paymentterms.
+    DATA lt_currency          TYPE zif_zsde002_master_data=>tt_currency.
+    DATA lt_conditiontype     TYPE zif_zsde002_master_data=>tt_conditiontype.
+
+    " Sales Area
+    IF  is_order-salesorganization   IS NOT INITIAL
+    AND is_order-distributionchannel IS NOT INITIAL
+    AND is_order-division            IS NOT INITIAL.
+
+      ls_salesarea-salesorganization   = is_order-salesorganization.
+      ls_salesarea-distributionchannel = is_order-distributionchannel.
+      ls_salesarea-division            = is_order-division.
+
+      INSERT VALUE #( salesorganization   = ls_salesarea-salesorganization
+                      distributionchannel = ls_salesarea-distributionchannel
+                      division            = ls_salesarea-division
+                    ) INTO TABLE lt_sales_area.
+
+      IF go_master_data->find_unknown_sales_area( lt_sales_area ) IS NOT INITIAL.
+        APPEND VALUE #( msgno         = '200'
+                        msgtx         = message_text( iv_msgno = '200'
+                                                      iv_v1    = |{ is_order-salesorganization }|
+                                                      iv_v2    = |{ is_order-distributionchannel }|
+                                                      iv_v3    = |{ is_order-division }| )
+                        sfheaderidref = is_order-sfheaderidref
+                        field         = zcl_zsde002_json=>to_json_name( 'salesorganization, distributionchannel, division' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
+    " Customer Sales Area
+    IF  is_order-salesorganization   IS NOT INITIAL
+    AND is_order-distributionchannel IS NOT INITIAL
+    AND is_order-division            IS NOT INITIAL.
+
+      ls_customersalesarea-salesorganization   = is_order-salesorganization.
+      ls_customersalesarea-distributionchannel = is_order-distributionchannel.
+      ls_customersalesarea-division            = is_order-division.
+
+       " Sold-to Party
+      IF is_order-soldtoparty IS NOT INITIAL.
+        ls_customersalesarea-customer = |{ is_order-soldtoparty ALPHA = IN }|.
+
+        INSERT VALUE #( salesorganization   = ls_customersalesarea-salesorganization
+                        distributionchannel = ls_customersalesarea-distributionchannel
+                        division            = ls_customersalesarea-division
+                        customer            = ls_customersalesarea-customer
+                      ) INTO TABLE lt_cust_sales_area.
+
+        IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
+          APPEND VALUE #( msgno         = '201'
+                          msgtx         = message_text( iv_msgno = '201'
+                                                        iv_v1    = |{ is_order-salesorganization }|
+                                                        iv_v2    = |{ is_order-distributionchannel }|
+                                                        iv_v3    = |{ is_order-division }|
+                                                        iv_v4    = |{ is_order-soldtoparty }| )
+                          sfheaderidref = is_order-sfheaderidref
+                          field         = zcl_zsde002_json=>to_json_name( 'soldtoparty' )
+                        ) TO rt_error.
+        ENDIF.
+      ENDIF.
+
+      " Ship-to Party
+      IF is_order-shiptoparty IS NOT INITIAL.
+        ls_customersalesarea-customer = |{ is_order-shiptoparty ALPHA = IN }|.
+
+        INSERT VALUE #( salesorganization   = ls_customersalesarea-salesorganization
+                        distributionchannel = ls_customersalesarea-distributionchannel
+                        division            = ls_customersalesarea-division
+                        customer            = ls_customersalesarea-customer
+                      ) INTO TABLE lt_cust_sales_area.
+
+        IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
+          APPEND VALUE #( msgno         = '201'
+                          msgtx         = message_text( iv_msgno = '201'
+                                                        iv_v1    = |{ is_order-salesorganization }|
+                                                        iv_v2    = |{ is_order-distributionchannel }|
+                                                        iv_v3    = |{ is_order-division }|
+                                                        iv_v4    = |{ is_order-shiptoparty }| )
+                          sfheaderidref = is_order-sfheaderidref
+                          field         = zcl_zsde002_json=>to_json_name( 'shiptoparty' )
+                        ) TO rt_error.
+        ENDIF.
+      ENDIF.
+
+      " Bill-to Party
+      IF is_order-billtoparty IS NOT INITIAL.
+        ls_customersalesarea-customer = |{ is_order-billtoparty ALPHA = IN }|.
+
+        INSERT VALUE #( salesorganization   = ls_customersalesarea-salesorganization
+                        distributionchannel = ls_customersalesarea-distributionchannel
+                        division            = ls_customersalesarea-division
+                        customer            = ls_customersalesarea-customer
+                      ) INTO TABLE lt_cust_sales_area.
+
+        IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
+          APPEND VALUE #( msgno         = '201'
+                          msgtx         = message_text( iv_msgno = '201'
+                                                        iv_v1    = |{ is_order-salesorganization }|
+                                                        iv_v2    = |{ is_order-distributionchannel }|
+                                                        iv_v3    = |{ is_order-division }|
+                                                        iv_v4    = |{ is_order-billtoparty }| )
+                          sfheaderidref = is_order-sfheaderidref
+                          field         = zcl_zsde002_json=>to_json_name( 'billtoparty' )
+                        ) TO rt_error.
+        ENDIF.
+      ENDIF.
+
+      " Payer
+      IF is_order-payer IS NOT INITIAL.
+        ls_customersalesarea-customer = |{ is_order-payer ALPHA = IN }|.
+
+        INSERT VALUE #( salesorganization   = ls_customersalesarea-salesorganization
+                        distributionchannel = ls_customersalesarea-distributionchannel
+                        division            = ls_customersalesarea-division
+                        customer            = ls_customersalesarea-customer
+                      ) INTO TABLE lt_cust_sales_area.
+
+        IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
+          APPEND VALUE #( msgno         = '201'
+                          msgtx         = message_text( iv_msgno = '201'
+                                                        iv_v1    = |{ is_order-salesorganization }|
+                                                        iv_v2    = |{ is_order-distributionchannel }|
+                                                        iv_v3    = |{ is_order-division }|
+                                                        iv_v4    = |{ is_order-payer }| )
+                          sfheaderidref = is_order-sfheaderidref
+                          field         = zcl_zsde002_json=>to_json_name( 'payer' )
+                        ) TO rt_error.
+        ENDIF.
+      ENDIF.
+
+      " Stock Van
+      IF is_order-stockvan IS NOT INITIAL.
+        ls_customersalesarea-customer = |{ is_order-stockvan ALPHA = IN }|.
+
+        INSERT VALUE #( salesorganization   = ls_customersalesarea-salesorganization
+                        distributionchannel = ls_customersalesarea-distributionchannel
+                        division            = ls_customersalesarea-division
+                        customer            = ls_customersalesarea-customer
+                      ) INTO TABLE lt_cust_sales_area.
+
+        IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
+          APPEND VALUE #( msgno         = '201'
+                          msgtx         = message_text( iv_msgno = '201'
+                                                        iv_v1    = |{ is_order-salesorganization }|
+                                                        iv_v2    = |{ is_order-distributionchannel }|
+                                                        iv_v3    = |{ is_order-division }|
+                                                        iv_v4    = |{ is_order-stockvan }| )
+                          sfheaderidref = is_order-sfheaderidref
+                          field         = zcl_zsde002_json=>to_json_name( 'stockvan' )
+                        ) TO rt_error.
+        ENDIF.
+      ENDIF.
+    ENDIF.
+
+    " Sales Document Type
+    IF  is_order-salesordertype IS NOT INITIAL.
+      lv_salesdocumenttype = is_order-salesordertype.
+      INSERT lv_salesdocumenttype INTO TABLE lt_salesdocumenttype.
+
+      IF go_master_data->find_unknown_salesdocumenttype( lt_salesdocumenttype ) IS NOT INITIAL.
+        APPEND VALUE #( msgno         = '202'
+                        msgtx         = message_text( iv_msgno = '202'
+                                                      iv_v1    = |{ is_order-salesordertype }| )
+                        sfheaderidref = is_order-sfheaderidref
+                        field         = zcl_zsde002_json=>to_json_name( 'salesordertype' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
+    " Payment Terms
+    IF  is_order-paymentterm IS NOT INITIAL.
+      lv_paymentterms = is_order-paymentterm.
+      INSERT lv_paymentterms INTO TABLE lt_paymentterms.
+
+      IF go_master_data->find_unknown_paymentterms( lt_paymentterms ) IS NOT INITIAL.
+        APPEND VALUE #( msgno         = '203'
+                        msgtx         = message_text( iv_msgno = '203'
+                                                      iv_v1    = |{ is_order-paymentterm }| )
+                        sfheaderidref = is_order-sfheaderidref
+                        field         = zcl_zsde002_json=>to_json_name( 'paymentterm' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
+    " Currency
+    IF  is_order-currency IS NOT INITIAL.
+      lv_currency = is_order-currency.
+      INSERT lv_currency INTO TABLE lt_currency.
+
+      IF go_master_data->find_unknown_currency( lt_currency ) IS NOT INITIAL.
+        APPEND VALUE #( msgno         = '204'
+                        msgtx         = message_text( iv_msgno = '204'
+                                                      iv_v1    = |{ is_order-currency }| )
+                        sfheaderidref = is_order-sfheaderidref
+                        field         = zcl_zsde002_json=>to_json_name( 'currency' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
+    " Order Condition Type
+    LOOP AT it_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
+      IF  <lfs_pricing>-conditiontype IS NOT INITIAL.
+        lv_conditiontype = <lfs_pricing>-conditiontype.
+        INSERT lv_conditiontype INTO TABLE lt_conditiontype.
+      ENDIF.
+    ENDLOOP.
+
+    DATA(lt_unknown_conditiontype) = go_master_data->find_unknown_conditiontype( lt_conditiontype ).
+
+    LOOP AT it_pricing ASSIGNING <lfs_pricing>.
+      lv_conditiontype = <lfs_pricing>-conditiontype.
+
+      IF <lfs_pricing>-conditiontype IS NOT INITIAL
+      AND line_exists( lt_unknown_conditiontype[ table_line = lv_conditiontype ] ).
+        APPEND VALUE #( msgno         = '205'
+                        msgtx         = message_text( iv_msgno = '205'
+                                                      iv_v1    = |{ <lfs_pricing>-conditiontype }| )
+                        sfheaderidref = is_order-sfheaderidref
+                        field         = zcl_zari002_json=>to_json_name( 'conditiontype' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD check_item_master_data.
+
+    " For Conversion
+    DATA lv_product           TYPE zif_zsde002_master_data=>ty_product.
+    DATA lv_plant             TYPE zif_zsde002_master_data=>ty_plant.
+    DATA lv_storagelocation   TYPE zif_zsde002_master_data=>ty_storagelocation.
+    DATA ls_baseunit          TYPE zif_zsde002_master_data=>ty_base_unit.
+    DATA lv_conditiontype     TYPE zif_zsde002_master_data=>ty_conditiontype.
+
+    " Key Table
+    DATA lt_product           TYPE zif_zsde002_master_data=>tt_product.
+    DATA lt_plant             TYPE zif_zsde002_master_data=>tt_plant.
+    DATA lt_storagelocation   TYPE zif_zsde002_master_data=>tt_storagelocation.
+    DATA lt_baseunit          TYPE zif_zsde002_master_data=>tt_baseunit.
+    DATA lt_conditiontype     TYPE zif_zsde002_master_data=>tt_conditiontype.
+
+    " Product
+    IF  is_item-customermaterial IS NOT INITIAL.
+      lv_product = is_item-customermaterial.
+      INSERT lv_product INTO TABLE lt_product.
+
+      IF go_master_data->find_unknown_product( lt_product ) IS NOT INITIAL.
+        APPEND VALUE #( msgno         = '206'
+                        msgtx         = message_text( iv_msgno = '206'
+                                                      iv_v1    = |{ is_item-customermaterial }| )
+                        sfheaderidref = is_order-sfheaderidref
+                        sfitemidref   = is_item-sfitemidref
+                        field         = zcl_zsde002_json=>to_json_name( 'customermaterial' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
+    " Plant
+    IF  is_item-plant IS NOT INITIAL.
+      lv_plant = is_item-plant.
+      INSERT lv_plant INTO TABLE lt_plant.
+
+      IF go_master_data->find_unknown_plant( lt_plant ) IS NOT INITIAL.
+        APPEND VALUE #( msgno         = '207'
+                        msgtx         = message_text( iv_msgno = '207'
+                                                      iv_v1    = |{ is_item-plant }| )
+                        sfheaderidref = is_order-sfheaderidref
+                        sfitemidref   = is_item-sfitemidref
+                        field         = zcl_zsde002_json=>to_json_name( 'plant' )
+                      ) TO rt_error.
+      ENDIF.
+      ENDIF.
+
+      " Storage Location
+      IF  is_item-storagelocation IS NOT INITIAL.
+        lv_storagelocation = is_item-storagelocation.
+        INSERT lv_storagelocation INTO TABLE lt_storagelocation.
+
+        IF go_master_data->find_unknown_storagelocation( lt_storagelocation ) IS NOT INITIAL.
+          APPEND VALUE #( msgno         = '208'
+                          msgtx         = message_text( iv_msgno = '208'
+                                                        iv_v1    = |{ is_item-storagelocation }| )
+                          sfheaderidref = is_order-sfheaderidref
+                          sfitemidref   = is_item-sfitemidref
+                          field         = zcl_zsde002_json=>to_json_name( 'storagelocation' )
+                        ) TO rt_error.
+        ENDIF.
+      ENDIF.
+
+      " Base Unit
+      IF  is_item-customermaterial IS NOT INITIAL
+      AND is_item-salesunit        IS NOT INITIAL.
+
+        ls_baseunit-product  = is_item-customermaterial.
+        ls_baseunit-baseunit = is_item-salesunit.
+
+        INSERT VALUE #( product  = ls_baseunit-product
+                        baseunit = ls_baseunit-baseunit
+                      ) INTO TABLE lt_baseunit.
+
+        IF go_master_data->find_unknown_baseunit( lt_baseunit ) IS NOT INITIAL.
+          APPEND VALUE #( msgno         = '209'
+                          msgtx         = message_text( iv_msgno = '209'
+                                                        iv_v1    = |{ is_item-customermaterial }|
+                                                        iv_v2    = |{ is_item-salesunit }| )
+                          sfheaderidref = is_order-sfheaderidref
+                          sfitemidref   = is_item-sfitemidref
+                          field         = zcl_zsde002_json=>to_json_name( 'salesunit' )
+                        ) TO rt_error.
+        ENDIF.
+      ENDIF.
+
+      " Item Condition Type
+      LOOP AT it_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
+        IF  <lfs_pricing>-conditiontype IS NOT INITIAL.
+          lv_conditiontype = <lfs_pricing>-conditiontype.
+          INSERT lv_conditiontype INTO TABLE lt_conditiontype.
+        ENDIF.
+      ENDLOOP.
+
+      DATA(lt_unknown_conditiontype) = go_master_data->find_unknown_conditiontype( lt_conditiontype ).
+
+      LOOP AT it_pricing ASSIGNING <lfs_pricing>.
+        lv_conditiontype = <lfs_pricing>-conditiontype.
+
+        IF <lfs_pricing>-conditiontype IS NOT INITIAL
+        AND line_exists( lt_unknown_conditiontype[ table_line = lv_conditiontype ] ).
+          APPEND VALUE #( msgno         = '210'
+                          msgtx         = message_text( iv_msgno = '210'
+                                                        iv_v1    = |{ <lfs_pricing>-conditiontype }| )
+                          sfheaderidref = is_order-sfheaderidref
+                          sfitemidref   = is_item-sfitemidref
+                          field         = zcl_zari002_json=>to_json_name( 'conditiontype' )
+                        ) TO rt_error.
+        ENDIF.
+      ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD check_duplicate.
+
+  ENDMETHOD.
+
+
+  METHOD save.
+
+    INSERT ztsd_e002_order FROM @is_order.
+    IF sy-subrc <> 0.
+      ROLLBACK WORK.
+      RETURN.
+    ENDIF.
+
+    INSERT ztsd_e002_ordprc FROM TABLE @it_order_pricing.
+    IF sy-subrc <> 0.
+      ROLLBACK WORK.
+      RETURN.
+    ENDIF.
+
+    INSERT ztsd_e002_item FROM TABLE @it_item.
+    IF sy-subrc <> 0.
+      ROLLBACK WORK.
+      RETURN.
+    ENDIF.
+
+    INSERT ztsd_e002_itmprc FROM TABLE @it_item_pricing.
+    IF sy-subrc <> 0.
+      ROLLBACK WORK.
+      RETURN.
+    ENDIF.
+
+    COMMIT WORK AND WAIT.
+    rv_result = abap_true.
+
+  ENDMETHOD.
+
+
+  METHOD post.
+
+*    DATA:
+*      lt_order_response TYPE tt_order_response,
+*      ls_order_response TYPE ty_order_response,
+*      lt_message        TYPE zcl_zsde002_so_create=>tt_message.
+*
+*    LOOP AT is_request-order ASSIGNING FIELD-SYMBOL(<lfs_order>).
+*
+*      " Generate group index
+**      DATA(lv_idx) = sy-tabix.
+**      IF <lfs_order>-requestid IS INITIAL.
+**        <lfs_order>-requestid = |{ ls_request-requestid }-{ lv_idx }|.
+**      ENDIF.
+*
+*      " Create Sales Order
+*      DATA(ls_result) = zcl_zsde002_so_create=>create( EXPORTING is_request = <lfs_order>
+*                                                                 io_param   = lo_param ).
+*      MOVE-CORRESPONDING ls_result TO ls_order_response.
+*
+*      IF ls_order_response-salesordernumber IS NOT INITIAL.
+*        ev_total_success = ev_total_success + 1.
+*      ELSE.
+*        ev_total_error = ev_total_error + 1.
+*      ENDIF.
+*
+*    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD to_errors.
+
+    LOOP AT it_finding ASSIGNING FIELD-SYMBOL(<lfs_finding>).
+      APPEND VALUE #( msgno         = <lfs_finding>-msgno
+                      msgtx         = message_text( iv_msgno = <lfs_finding>-msgno
+                                                    iv_v1    = <lfs_finding>-msgv1
+                                                    iv_v2    = <lfs_finding>-msgv2
+                                                    iv_v3    = <lfs_finding>-msgv3
+                                                    iv_v4    = <lfs_finding>-msgv4 )
+                      sfheaderidref = iv_sfheaderidref
+                      sfitemidref   = iv_sfitemidref
+                      field         = zcl_zsde002_json=>to_json_name( <lfs_finding>-field )
+                    ) TO rt_error.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD message_text.
+
+    MESSAGE ID 'ZSDE002' TYPE 'E' NUMBER iv_msgno
+    WITH iv_v1 iv_v2 iv_v3 iv_v4
+    INTO rv_result.
+
+  ENDMETHOD.
+
+ENDCLASS.

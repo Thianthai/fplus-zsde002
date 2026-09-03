@@ -13,38 +13,44 @@ annotate entity ZC_ZSDE002_ORDER_LOG
   with
 {
   @UI.facet: [
-    { id: 'GeneralTab', purpose: #STANDARD, type: #COLLECTION,
-      label: 'General Information', position: 10 },
+    { id: 'OrderTab', purpose: #STANDARD, type: #COLLECTION,
+      label: 'Order', position: 10 },
 
-    { id: 'RequestData', parentId: 'GeneralTab', type: #FIELDGROUP_REFERENCE,
-      label: 'Request', position: 10, targetQualifier: 'RequestData' },
+    { id: 'OrderData', parentId: 'OrderTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Order', position: 10, targetQualifier: 'OrderData' },
 
-    { id: 'OrgData', parentId: 'GeneralTab', type: #FIELDGROUP_REFERENCE,
+    { id: 'OrgData', parentId: 'OrderTab', type: #FIELDGROUP_REFERENCE,
       label: 'Organization', position: 20, targetQualifier: 'OrgData' },
 
-    { id: 'PartnerData', parentId: 'GeneralTab', type: #FIELDGROUP_REFERENCE,
-      label: 'Partner', position: 30, targetQualifier: 'PartnerData' },
+    { id: 'RefData', parentId: 'OrderTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Reference', position: 30, targetQualifier: 'RefData' },
+      
+    { id: 'PartnerData', parentId: 'OrderTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Partner', position: 40, targetQualifier: 'PartnerData' },
 
-    { id: 'RefData', parentId: 'GeneralTab', type: #FIELDGROUP_REFERENCE,
-      label: 'Reference', position: 40, targetQualifier: 'RefData' },
+    { id: 'DelivData', parentId: 'OrderTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Delivery & Shipping', position: 50, targetQualifier: 'DelivData' },
 
-    { id: 'DateData', parentId: 'GeneralTab', type: #FIELDGROUP_REFERENCE,
-      label: 'Dates & Shipping', position: 50, targetQualifier: 'DateData' },
+    { id: 'ReasonData', parentId: 'OrderTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Reason', position: 60, targetQualifier: 'ReasonData' },
 
-    { id: 'FinData', parentId: 'GeneralTab', type: #FIELDGROUP_REFERENCE,
-      label: 'Pricing & Reason', position: 60, targetQualifier: 'FinData' },
-
-    { id: 'BodyFacet', purpose: #STANDARD, type: #FIELDGROUP_REFERENCE,
-      label: 'Request Body (JSON)', position: 20, targetQualifier: 'RequestBody' },
+    { id: 'ResultData', parentId: 'OrderTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Result', position: 70, targetQualifier: 'ResultData' },
+      
+    { id: 'AdminData', parentId: 'OrderTab', type: #FIELDGROUP_REFERENCE,
+      label: 'Administrative Data', position: 80, targetQualifier: 'AdminData' },
 
     { id: 'ItemFacet', purpose: #STANDARD, type: #LINEITEM_REFERENCE,
-      label: 'Items', position: 30, targetElement: '_ItemLog' },
+      label: 'Items', position: 20, targetElement: '_ItemLog' },
 
     { id: 'OrderPricingFacet', purpose: #STANDARD, type: #LINEITEM_REFERENCE,
-      label: 'Order Pricing', position: 40, targetElement: '_OrderPricingLog' },
+      label: 'Order Pricing', position: 30, targetElement: '_OrderPricingLog' },
 
     { id: 'OrderMessageFacet', purpose: #STANDARD, type: #LINEITEM_REFERENCE,
-      label: 'Messages', position: 50, targetElement: '_OrderMessageLog' }
+      label: 'Messages', position: 40, targetElement: '_OrderMessageLog' },
+      
+    { id: 'BodyFacet', purpose: #STANDARD, type: #FIELDGROUP_REFERENCE,
+      label: 'Request Body (JSON)', position: 50, targetQualifier: 'RequestBody' }
   ]
 
   @UI.hidden: true
@@ -53,7 +59,7 @@ annotate entity ZC_ZSDE002_ORDER_LOG
   @UI: {
     lineItem:       [{ position: 10, importance: #HIGH }],
     selectionField: [{ position: 10 }],
-    fieldGroup:     [{ qualifier: 'RequestData', position: 10 }]
+    fieldGroup:     [{ qualifier: 'OrderData', position: 10 }]
   }
   RequestId;
 
@@ -66,52 +72,52 @@ annotate entity ZC_ZSDE002_ORDER_LOG
   @UI: {
     lineItem:       [{ position: 20, importance: #HIGH }],
     selectionField: [{ position: 20 }],
-    fieldGroup:     [{ qualifier: 'RefData', position: 10 }]
+    fieldGroup:     [{ qualifier: 'OrderData', position: 20 }]
   }
   SfHeaderIdRef;
 
   @UI: {
     lineItem:       [{ position: 30, importance: #HIGH }],
     selectionField: [{ position: 30 }],
-    fieldGroup:     [{ qualifier: 'RequestData', position: 20 }]
+    fieldGroup:     [{ qualifier: 'ResultData', position: 20 }]
   }
   SalesOrderNumber;
 
   @UI: {
     lineItem:       [{ position: 40, importance: #HIGH }],
     selectionField: [{ position: 40 }],
-    fieldGroup:     [{ qualifier: 'RequestData', position: 30 }]
+    fieldGroup:     [{ qualifier: 'ResultData', position: 10 }]
   }
   OrderStatus;
 
-  @UI.fieldGroup: [{ qualifier: 'RequestData', position: 40 }]
+  @UI.fieldGroup: [{ qualifier: 'AdminData', position: 10 }]
   CreatedAt;
 
-  @UI.fieldGroup: [{ qualifier: 'RequestData', position: 50 }]
+  @UI.fieldGroup: [{ qualifier: 'AdminData', position: 20 }]
   CreatedBy;
 
-  @UI.fieldGroup: [{ qualifier: 'OrgData', position: 10 }]
+  @UI.fieldGroup: [{ qualifier: 'OrderData', position: 40 }]
   ProcessType;
 
-  @UI.fieldGroup: [{ qualifier: 'OrgData', position: 20 }]
+  @UI.fieldGroup: [{ qualifier: 'OrderData', position: 50 }]
   TranType;
 
   @UI: {
     lineItem:   [{ position: 50, importance: #MEDIUM }],
-    fieldGroup: [{ qualifier: 'OrgData', position: 30 }]
+    fieldGroup: [{ qualifier: 'OrderData', position: 60 }]
   }
   SalesOrderType;
 
   @UI: {
     selectionField: [{ position: 50 }],
-    fieldGroup:     [{ qualifier: 'OrgData', position: 40 }]
+    fieldGroup:     [{ qualifier: 'OrgData', position: 10 }]
   }
   SalesOrganization;
 
-  @UI.fieldGroup: [{ qualifier: 'OrgData', position: 50 }]
+  @UI.fieldGroup: [{ qualifier: 'OrgData', position: 20 }]
   DistributionChannel;
 
-  @UI.fieldGroup: [{ qualifier: 'OrgData', position: 60 }]
+  @UI.fieldGroup: [{ qualifier: 'OrgData', position: 30 }]
   Division;
 
   @UI: {
@@ -138,52 +144,52 @@ annotate entity ZC_ZSDE002_ORDER_LOG
 
   @UI: {
     lineItem:   [{ position: 70, importance: #MEDIUM }],
-    fieldGroup: [{ qualifier: 'RefData', position: 20 }]
+    fieldGroup: [{ qualifier: 'RefData', position: 10 }]
   }
   CustomerReference;
 
-  @UI.fieldGroup: [{ qualifier: 'RefData', position: 30 }]
+  @UI.fieldGroup: [{ qualifier: 'RefData', position: 20 }]
   CustomerReferenceDate;
 
-  @UI.fieldGroup: [{ qualifier: 'RefData', position: 40 }]
+  @UI.fieldGroup: [{ qualifier: 'OrderData', position: 30 }]
   SalesOrderTempId;
 
-  @UI.fieldGroup: [{ qualifier: 'RefData', position: 50 }]
+  @UI.fieldGroup: [{ qualifier: 'RefData', position: 70 }]
   CustomerPO;
 
   @UI.fieldGroup: [{ qualifier: 'RefData', position: 60 }]
   OriginalSalesDocument;
 
-  @UI.fieldGroup: [{ qualifier: 'RefData', position: 70 }]
+  @UI.fieldGroup: [{ qualifier: 'RefData', position: 50 }]
   RelatedDocumentReference;
 
-  @UI.fieldGroup: [{ qualifier: 'RefData', position: 80 }]
+  @UI.fieldGroup: [{ qualifier: 'RefData', position: 40 }]
   TaxDocumentNo;
 
-  @UI.fieldGroup: [{ qualifier: 'RefData', position: 90 }]
+  @UI.fieldGroup: [{ qualifier: 'RefData', position: 30 }]
   PaymentTransactionReference;
 
-  @UI.fieldGroup: [{ qualifier: 'DateData', position: 10 }]
+  @UI.fieldGroup: [{ qualifier: 'OrderData', position: 70 }]
   DocumentDate;
 
-  @UI.fieldGroup: [{ qualifier: 'DateData', position: 20 }]
+  @UI.fieldGroup: [{ qualifier: 'DelivData', position: 10 }]
   ReqDeliveryDate;
 
-  @UI.fieldGroup: [{ qualifier: 'DateData', position: 30 }]
+  @UI.fieldGroup: [{ qualifier: 'DelivData', position: 20 }]
   ShippingConditions;
 
-  @UI.fieldGroup: [{ qualifier: 'FinData', position: 10 }]
+  @UI.fieldGroup: [{ qualifier: 'OrderData', position: 80 }]
   Currency;
 
-  @UI.fieldGroup: [{ qualifier: 'FinData', position: 20 }]
+  @UI.fieldGroup: [{ qualifier: 'OrderData', position: 90 }]
   PaymentTerm;
 
-  @UI.fieldGroup: [{ qualifier: 'FinData', position: 30 }]
+  @UI.fieldGroup: [{ qualifier: 'ReasonData', position: 10 }]
   OrderReason;
 
   @UI: {
     multiLineText: true,
-    fieldGroup:    [{ qualifier: 'FinData', position: 40 }]
+    fieldGroup:    [{ qualifier: 'ReasonData', position: 20 }]
   }
   OrderReasonText;
 

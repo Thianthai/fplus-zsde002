@@ -171,7 +171,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     DATA lv_item_cid(3)   TYPE n.
 
    " Get Constant Parameters
-    zcl_zsde002_handler=>get_constant_param( EXPORTING io_param = io_param ).
+*    zcl_zsde002_http=>get_constant_param( EXPORTING io_param = io_param ).
 
     " Generate UUID
 *    TRY.

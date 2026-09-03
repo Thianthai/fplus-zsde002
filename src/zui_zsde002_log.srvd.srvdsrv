@@ -1,0 +1,8 @@
+@EndUserText.label: 'Sales Order Creation - Log Monitor'
+define service ZUI_ZSDE002_LOG {
+  expose ZC_ZSDE002_ORDER_LOG  as OrderLog;
+  expose ZC_ZSDE002_ITEM_LOG   as ItemLog;
+  expose ZC_ZSDE002_ORDPRC_LOG as OrderPricingLog;
+  expose ZC_ZSDE002_ITMPRC_LOG as ItemPricingLog;
+  expose ZC_ZSDE002_ORDMSG_LOG as OrderMessageLog;
+}
