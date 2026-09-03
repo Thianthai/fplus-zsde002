@@ -820,33 +820,40 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     " For Conversion
     DATA lv_product          TYPE zif_zsde002_master_data=>ty_product.
+    DATA lt_product_unit     TYPE zif_zsde002_master_data=>tt_product_unit.
     DATA lv_plant            TYPE zif_zsde002_master_data=>ty_plant.
     DATA lv_storage_location TYPE zif_zsde002_master_data=>ty_storage_location.
-    DATA ls_base_unit        TYPE zif_zsde002_master_data=>ty_base_unit.
     DATA lv_condition_type   TYPE zif_zsde002_master_data=>ty_condition_type.
+    DATA lv_material         TYPE zif_zsde002_master_data=>ty_product.
 
     " Key Table
     DATA lt_product          TYPE zif_zsde002_master_data=>tt_product.
     DATA lt_plant            TYPE zif_zsde002_master_data=>tt_plant.
     DATA lt_storage_location TYPE zif_zsde002_master_data=>tt_storage_location.
-    DATA lt_base_unit        TYPE zif_zsde002_master_data=>tt_base_unit.
     DATA lt_condition_type   TYPE zif_zsde002_master_data=>tt_condition_type.
 
     " Product
-    IF  is_item-customer_material IS NOT INITIAL.
-      lv_product = is_item-customer_material.
+    " ส่ง MaterialNumber มา → เช็คกับ I_Product
+    " ส่งแต่ CustomerMaterial → ปล่อยให้ SD determine material จาก info record ตอนสร้าง SO
+    "   (I_CustomerMaterial ไม่ released สำหรับ ABAP Cloud จึงเช็คฝั่งนี้ไม่ได้)
+    IF is_item-material_number IS NOT INITIAL.
+
+      lv_product = zcl_zsde002_validator=>to_internal_material( is_item-material_number ).
       INSERT lv_product INTO TABLE lt_product.
 
       IF go_master_data->find_unknown_product( lt_product ) IS NOT INITIAL.
         APPEND VALUE #( msgno            = '250'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '250'
-                                                         iv_v1    = |{ is_item-customer_material }| )
+                                                         iv_v1    = |{ is_item-material_number }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
                         sf_item_id_ref   = is_item-sf_item_id_ref
-                        field            = zcl_zsde002_json=>to_json_name( 'customer_material' )
+                        field            = zcl_zsde002_json=>to_json_name( 'material_number' )
                       ) TO rt_error.
+      ELSE.
+        lv_material = lv_product.
       ENDIF.
+
     ENDIF.
 
     " Plant
@@ -885,21 +892,21 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     ENDIF.
 
     " Base Unit
-    IF  is_item-customer_material IS NOT INITIAL
-    AND is_item-sales_unit        IS NOT INITIAL.
+    " ข้ามถ้า material ยังหาไม่เจอ จะได้ไม่ขึ้น error ซ้อนกัน 2 บรรทัด
+    IF  lv_material          IS NOT INITIAL
+    AND is_item-sales_unit   IS NOT INITIAL.
 
-      ls_base_unit-product   = is_item-customer_material.
-      ls_base_unit-base_unit = is_item-sales_unit.
+      INSERT VALUE #( product          = lv_material
+                      alternative_unit = is_item-sales_unit
+                    ) INTO TABLE lt_product_unit.
 
-      INSERT VALUE #( product   = ls_base_unit-product
-                      base_unit = ls_base_unit-base_unit
-                    ) INTO TABLE lt_base_unit.
-
-      IF go_master_data->find_unknown_base_unit( lt_base_unit ) IS NOT INITIAL.
+      IF go_master_data->find_unknown_product_unit( lt_product_unit ) IS NOT INITIAL.
         APPEND VALUE #( msgno            = '253'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '253'
-                                                         iv_v1    = |{ is_item-customer_material }|
+                                                         iv_v1    = COND #( WHEN is_item-material_number IS NOT INITIAL
+                                                                            THEN |{ is_item-material_number }|
+                                                                            ELSE |{ is_item-customer_material }| )
                                                          iv_v2    = |{ is_item-sales_unit }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
                         sf_item_id_ref   = is_item-sf_item_id_ref

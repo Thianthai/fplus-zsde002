@@ -26,10 +26,11 @@ INTERFACE zif_zsde002_master_data
       customer             TYPE I_CustomerSalesArea-Customer,
     END OF ty_cust_sales_area,
 
-    BEGIN OF ty_base_unit,
-      product   TYPE I_ProductUnitsOfMeasure-Product,
-      base_unit TYPE I_ProductUnitsOfMeasure-BaseUnit,
-    END OF ty_base_unit.
+    "! UoM ที่ผูกกับ material — key คือ Product + AlternativeUnit
+    BEGIN OF ty_product_unit,
+      product          TYPE I_ProductUnitsOfMeasure-Product,
+      alternative_unit TYPE I_ProductUnitsOfMeasure-AlternativeUnit,
+    END OF ty_product_unit.
 
   TYPES:
     tt_sales_document_type TYPE SORTED TABLE OF ty_sales_document_type
@@ -42,8 +43,8 @@ INTERFACE zif_zsde002_master_data
                            WITH UNIQUE KEY table_line,
     tt_storage_location    TYPE SORTED TABLE OF ty_storage_location
                            WITH UNIQUE KEY table_line,
-    tt_base_unit           TYPE SORTED TABLE OF ty_base_unit
-                           WITH UNIQUE KEY product base_unit,
+    tt_product_unit        TYPE SORTED TABLE OF ty_product_unit
+                           WITH UNIQUE KEY product alternative_unit,
     tt_condition_type      TYPE SORTED TABLE OF ty_condition_type
                            WITH UNIQUE KEY table_line,
     tt_currency            TYPE SORTED TABLE OF ty_currency
@@ -81,9 +82,9 @@ INTERFACE zif_zsde002_master_data
     IMPORTING it_key           TYPE tt_storage_location
     RETURNING VALUE(rt_result) TYPE tt_storage_location.
 
-  METHODS find_unknown_base_unit
-    IMPORTING it_key           TYPE tt_base_unit
-    RETURNING VALUE(rt_result) TYPE tt_base_unit.
+  METHODS find_unknown_product_unit
+    IMPORTING it_key           TYPE tt_product_unit
+    RETURNING VALUE(rt_result) TYPE tt_product_unit.
 
   METHODS find_unknown_condition_type
     IMPORTING it_key           TYPE tt_condition_type

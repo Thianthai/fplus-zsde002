@@ -247,10 +247,10 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_zsde002_master_data~find_unknown_base_unit.
+  METHOD zif_zsde002_master_data~find_unknown_product_unit.
 
-    DATA lr_product   TYPE RANGE OF zif_zsde002_master_data=>ty_base_unit-product.
-    DATA lr_base_unit TYPE RANGE OF zif_zsde002_master_data=>ty_base_unit-base_unit.
+    DATA lr_product          TYPE RANGE OF zif_zsde002_master_data=>ty_product_unit-product.
+    DATA lr_alternative_unit TYPE RANGE OF zif_zsde002_master_data=>ty_product_unit-alternative_unit.
 
     IF it_key IS INITIAL.
       RETURN.
@@ -263,23 +263,23 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
                      TO lr_product.
       ENDIF.
 
-      IF NOT line_exists( lr_base_unit[ low = <lfs_key>-base_unit ] ).
-        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-base_unit )
-                     TO lr_base_unit.
+      IF NOT line_exists( lr_alternative_unit[ low = <lfs_key>-alternative_unit ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-alternative_unit )
+                     TO lr_alternative_unit.
       ENDIF.
 
     ENDLOOP.
 
     SELECT FROM I_ProductUnitsOfMeasure
       FIELDS Product,
-             BaseUnit
-      WHERE Product  IN @lr_product
-        AND BaseUnit IN @lr_base_unit
+             AlternativeUnit
+      WHERE Product         IN @lr_product
+        AND AlternativeUnit IN @lr_alternative_unit
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING <lfs_key>.
-      IF NOT line_exists( lt_existing[ Product  = <lfs_key>-product
-                                       BaseUnit = <lfs_key>-base_unit ] ).
+      IF NOT line_exists( lt_existing[ Product         = <lfs_key>-product
+                                       AlternativeUnit = <lfs_key>-alternative_unit ] ).
         INSERT <lfs_key> INTO TABLE rt_result.
       ENDIF.
     ENDLOOP.

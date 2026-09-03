@@ -28,6 +28,10 @@ CLASS zcl_zsde002_validator DEFINITION
       IMPORTING iv_value         TYPE clike
       RETURNING VALUE(rv_result) TYPE I_CustomerSalesArea-Customer.
 
+    CLASS-METHODS to_internal_material
+      IMPORTING iv_value         TYPE clike
+      RETURNING VALUE(rv_result) TYPE I_Product-Product.
+
     CLASS-METHODS check_order_mandatory
       IMPORTING is_order          TYPE ty_order
                 is_param          TYPE ty_param
@@ -87,6 +91,23 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
 
     lv_customer = iv_value.
     rv_result   = |{ lv_customer ALPHA = IN }|.
+
+  ENDMETHOD.
+
+
+  METHOD to_internal_material.
+
+    " conversion exit ALPHA ของ MATNR เติมศูนย์ถึง 18 ตัว ไม่ใช่ความยาวของ field (40)
+    " ถ้าประกาศตัวแปรเป็น I_Product-Product แล้ว ALPHA จะเติมศูนย์ยาว 40 ซึ่งผิด
+    DATA lv_material TYPE c LENGTH 18.
+
+    IF strlen( iv_value ) > 18.
+      rv_result = iv_value.
+      RETURN.
+    ENDIF.
+
+    lv_material = iv_value.
+    rv_result   = |{ lv_material ALPHA = IN }|.
 
   ENDMETHOD.
 
