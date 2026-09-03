@@ -50,12 +50,6 @@ CLASS zcl_zsde002_json IMPLEMENTATION.
           EXPORTING iv_msgv1 = |JSON parse failed: { lo_error->get_text( ) }|.
     ENDTRY.
 
-    LOOP AT es_request-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
-      <lfs_order>-customer_reference_date = to_internal_date( <lfs_order>-customer_reference_date ).
-      <lfs_order>-document_date           = to_internal_date( <lfs_order>-document_date ).
-      <lfs_order>-req_delivery_date       = to_internal_date( <lfs_order>-req_delivery_date ).
-    ENDLOOP.
-
   ENDMETHOD.
 
 

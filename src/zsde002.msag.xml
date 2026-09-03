@@ -14,6 +14,234 @@
      <MSGNR>000</MSGNR>
      <TEXT>&amp;1 &amp;2 &amp;3 &amp;4</TEXT>
     </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>010</MSGNR>
+     <TEXT>Request body is empty</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>011</MSGNR>
+     <TEXT>Request body is not valid JSON</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>012</MSGNR>
+     <TEXT>JSON parse failed: &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>013</MSGNR>
+     <TEXT>Request contains no order</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>014</MSGNR>
+     <TEXT>Request ID &amp;1 is longer than &amp;2 characters</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>015</MSGNR>
+     <TEXT>SFHeaderIdRef &amp;1 is duplicated in this request</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>016</MSGNR>
+     <TEXT>Order &amp;1 contains no item</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>100</MSGNR>
+     <TEXT>Mandatory field &amp;1 is missing</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>101</MSGNR>
+     <TEXT>Mandatory field &amp;1 is missing for process type &amp;2</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>102</MSGNR>
+     <TEXT>Mandatory field &amp;1 is missing for transaction type &amp;2</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>103</MSGNR>
+     <TEXT>Mandatory field &amp;1 is missing for order reason &amp;2</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>150</MSGNR>
+     <TEXT>Item &amp;1: mandatory field &amp;2 is missing</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>151</MSGNR>
+     <TEXT>Item &amp;1: material number or customer material is required</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>200</MSGNR>
+     <TEXT>Sales area &amp;1/&amp;2/&amp;3 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>201</MSGNR>
+     <TEXT>Customer &amp;4 is not assigned to sales area &amp;1/&amp;2/&amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>202</MSGNR>
+     <TEXT>Sales document type &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>203</MSGNR>
+     <TEXT>Payment term &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>204</MSGNR>
+     <TEXT>Currency &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>205</MSGNR>
+     <TEXT>Condition type &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>250</MSGNR>
+     <TEXT>Material &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>251</MSGNR>
+     <TEXT>Plant &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>252</MSGNR>
+     <TEXT>Storage location &amp;1 does not exist in plant &amp;2</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>253</MSGNR>
+     <TEXT>Unit &amp;2 is not defined for material &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>254</MSGNR>
+     <TEXT>Condition type &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>255</MSGNR>
+     <TEXT>Customer material &amp;1 is not assigned to customer &amp;2</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>300</MSGNR>
+     <TEXT>Field &amp;1: date &amp;2 has an invalid format</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>301</MSGNR>
+     <TEXT>Item &amp;1: quantity &amp;2 is not a valid number</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>302</MSGNR>
+     <TEXT>Condition type &amp;1: amount &amp;2 is not a valid number</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>303</MSGNR>
+     <TEXT>Process type &amp;1 is not valid</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>304</MSGNR>
+     <TEXT>Order reason &amp;1 is not valid</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>400</MSGNR>
+     <TEXT>Order log could not be written for &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>401</MSGNR>
+     <TEXT>Item log could not be written for &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>402</MSGNR>
+     <TEXT>UUID could not be generated: &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>403</MSGNR>
+     <TEXT>Constant parameter &amp;1/&amp;2 could not be read: &amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>500</MSGNR>
+     <TEXT>Sales order &amp;1 created</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>501</MSGNR>
+     <TEXT>Sales order creation failed for &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>502</MSGNR>
+     <TEXT>Sales order could not be committed for &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>900</MSGNR>
+     <TEXT>Unexpected error: &amp;1</TEXT>
+    </T100>
    </T100>
   </asx:values>
  </asx:abap>

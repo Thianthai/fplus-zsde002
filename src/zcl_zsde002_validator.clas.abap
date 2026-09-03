@@ -15,6 +15,7 @@ CLASS zcl_zsde002_validator DEFINITION
     TYPES:
       BEGIN OF ty_finding,
         msgno TYPE symsgno,
+        msgty TYPE symsgty,
         msgv1 TYPE string,
         msgv2 TYPE string,
         msgv3 TYPE string,
@@ -131,6 +132,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
 
     LOOP AT lt_missing_field ASSIGNING FIELD-SYMBOL(<lfs_missing_field>).
       APPEND VALUE #( msgno = '100'
+                      msgty = 'E'
                       msgv1 = <lfs_missing_field>
                       field = <lfs_missing_field>
                     ) TO rt_finding.
@@ -182,6 +184,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
 
     LOOP AT lt_missing_field ASSIGNING FIELD-SYMBOL(<lfs_missing_field>).
       APPEND VALUE #( msgno = '100'
+                      msgty = 'E'
                       msgv1 = <lfs_missing_field>
                       field = <lfs_missing_field>
                     ) TO rt_finding.

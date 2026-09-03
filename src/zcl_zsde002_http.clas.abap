@@ -85,6 +85,7 @@ CLASS zcl_zsde002_http DEFINITION
     " Response Type ----------------------------------------------------
     TYPES:
       BEGIN OF ty_error,
+        type             TYPE string,
         code             TYPE string,
         message          TYPE string,
         sf_header_id_ref TYPE string,
@@ -106,9 +107,10 @@ CLASS zcl_zsde002_http DEFINITION
 
       BEGIN OF ty_response,
         request_id TYPE string,
-        passed     TYPE i,
-        failed     TYPE i,
-        errors     TYPE tt_error,
+*        passed     TYPE i,
+*        failed     TYPE i,
+        message    TYPE string,
+*        errors     TYPE tt_error,
         orders     TYPE tt_order_out,
       END OF ty_response.
 
@@ -123,8 +125,11 @@ CLASS zcl_zsde002_http DEFINITION
       IMPORTING io_http_request  TYPE REF TO if_web_http_request
       CHANGING  co_http_response TYPE REF TO if_web_http_response.
 
-    METHODS set_request_body
+    METHODS set_sample_request_body
       RETURNING VALUE(rs_request) TYPE ty_request.
+
+    METHODS set_sample_response_body
+      RETURNING VALUE(rs_response) TYPE ty_response.
 
     METHODS to_json_errors
       IMPORTING it_error        TYPE zcl_zsde002_processor=>tt_error
@@ -164,7 +169,7 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
     co_http_response->set_status( i_code   = 200
                                   i_reason = 'OK' ).
 
-    co_http_response->set_text( xco_cp_json=>data->from_abap( set_request_body(  )
+    co_http_response->set_text( xco_cp_json=>data->from_abap( set_sample_request_body(  )
                                 )->apply( VALUE #( ( xco_cp_json=>transformation->underscore_to_pascal_case ) )
                                 )->to_string( ) ).
 
@@ -175,33 +180,46 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
 
     DATA(ls_result) = NEW zcl_zsde002_processor( )->process( io_http_request->get_text( ) ).
 
-    DATA(ls_response) = VALUE ty_response( request_id = |{ ls_result-request_id }|
-                                           passed     = ls_result-passed
-                                           failed     = ls_result-failed
-                                           errors     = to_json_errors( ls_result-errors )
-                                           orders     = VALUE #( FOR <lfs_order> IN ls_result-orders
-                                                               ( sales_order_number = |{ <lfs_order>-sales_order_number }|
-                                                                 document_type      = |{ <lfs_order>-document_type }|
-                                                                 customer_reference = |{ <lfs_order>-customer_reference }|
-                                                                 sf_header_id_ref   = |{ <lfs_order>-sf_header_id_ref }|
-                                                                 processing_date    = <lfs_order>-processing_date
-                                                                 processing_time    = <lfs_order>-processing_time
-                                                                 errors             = to_json_errors( <lfs_order>-errors ) ) ) ).
+    " For Connection Testing
+    DATA(ls_response) = set_sample_response_body( ).
 
     co_http_response->set_header_field( i_name  = 'Content-Type'
                                         i_value = 'application/json' ).
 
-    co_http_response->set_status( i_code   = COND #( WHEN ls_response-errors[] IS INITIAL THEN 200 ELSE 400 )
-                                  i_reason = COND #( WHEN ls_response-errors[] IS INITIAL THEN 'OK' ELSE 'Bad Request' ) ).
+    co_http_response->set_status( i_code = 200 i_reason = 'OK' ).
 
     co_http_response->set_text( xco_cp_json=>data->from_abap( ls_response
                                 )->apply( VALUE #( ( xco_cp_json=>transformation->underscore_to_pascal_case ) )
                                 )->to_string( ) ).
 
+    " For Function Testing
+*    DATA(ls_response) = VALUE ty_response( request_id = |{ ls_result-request_id }|
+*                                           passed     = ls_result-passed
+*                                           failed     = ls_result-failed
+*                                           errors     = to_json_errors( ls_result-errors )
+*                                           orders     = VALUE #( FOR <lfs_order> IN ls_result-orders
+*                                                               ( sales_order_number = |{ <lfs_order>-sales_order_number }|
+*                                                                 document_type      = |{ <lfs_order>-document_type }|
+*                                                                 customer_reference = |{ <lfs_order>-customer_reference }|
+*                                                                 sf_header_id_ref   = |{ <lfs_order>-sf_header_id_ref }|
+*                                                                 processing_date    = <lfs_order>-processing_date
+*                                                                 processing_time    = <lfs_order>-processing_time
+*                                                                 errors             = to_json_errors( <lfs_order>-errors ) ) ) ).
+*
+*    co_http_response->set_header_field( i_name  = 'Content-Type'
+*                                        i_value = 'application/json' ).
+*
+*    co_http_response->set_status( i_code   = COND #( WHEN ls_response-errors[] IS INITIAL THEN 200 ELSE 400 )
+*                                  i_reason = COND #( WHEN ls_response-errors[] IS INITIAL THEN 'OK' ELSE 'Bad Request' ) ).
+*
+*    co_http_response->set_text( xco_cp_json=>data->from_abap( ls_response
+*                                )->apply( VALUE #( ( xco_cp_json=>transformation->underscore_to_pascal_case ) )
+*                                )->to_string( ) ).
+
   ENDMETHOD.
 
 
-  METHOD set_request_body.
+  METHOD set_sample_request_body.
 
     rs_request-request_id = 'YYYYMMDD_hhmmss'.
 
@@ -225,10 +243,40 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
 
   ENDMETHOD.
 
+
+  METHOD set_sample_response_body.
+
+    rs_response-request_id = '99991231_235959'.
+    rs_response-message    = |3 orders created with 2 orders failed|.
+
+    DO 5 TIMES.
+      IF sy-index <= 3.
+        APPEND INITIAL LINE TO rs_response-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
+        <lfs_order>-sales_order_number = |900000000{ sy-index }|.
+        <lfs_order>-sf_header_id_ref   = |SfHeaderIdRef-{ sy-index }|.
+      ELSE.
+        APPEND INITIAL LINE TO rs_response-orders ASSIGNING <lfs_order>.
+        <lfs_order>-sf_header_id_ref = |SfHeaderIdRef-{ sy-index }|.
+
+        DO 2 TIMES.
+          APPEND INITIAL LINE TO <lfs_order>-errors ASSIGNING FIELD-SYMBOL(<lfs_order_error>).
+          <lfs_order_error>-sf_header_id_ref = <lfs_order>-sf_header_id_ref.
+          <lfs_order_error>-sf_item_id_ref   = |SfItemIdRef-{ sy-index }|.
+          <lfs_order_error>-message          = |Order item 00000{ sy-index } error|.
+        ENDDO.
+      ENDIF.
+    ENDDO.
+
+  ENDMETHOD.
+
+
   METHOD to_json_errors.
 
     rt_error = VALUE #( FOR <lfs_error> IN it_error
-                      ( code             = |ZSDE002/{ <lfs_error>-msgno }|
+                      ( type             = COND #( WHEN <lfs_error>-msgty IS INITIAL
+                                                   THEN `E`
+                                                   ELSE |{ <lfs_error>-msgty }| )
+                        code             = |ZSDE002/{ <lfs_error>-msgno }|
                         message          = <lfs_error>-msgtx
                         sf_header_id_ref = <lfs_error>-sf_header_id_ref
                         sf_item_id_ref   = <lfs_error>-sf_item_id_ref
