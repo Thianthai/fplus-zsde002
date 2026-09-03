@@ -67,7 +67,21 @@ CLASS zcl_zsde002_processor DEFINITION
         lr_processtype_batch    TYPE RANGE OF ty_order-process_type,
         lr_trantype_reason      TYPE RANGE OF ty_order-tran_type,
         lr_order_reason         TYPE RANGE OF I_SalesDocument-SDDocumentReason,
-      END OF ty_param.
+      END OF ty_param,
+
+      "! ผลการเช็ค master data ของทั้ง request — เก็บเฉพาะ key ที่ "ไม่เจอ"
+      BEGIN OF ty_unknown,
+        sales_area          TYPE zif_zsde002_master_data=>tt_sales_area,
+        cust_sales_area     TYPE zif_zsde002_master_data=>tt_cust_sales_area,
+        sales_document_type TYPE zif_zsde002_master_data=>tt_sales_document_type,
+        payment_terms       TYPE zif_zsde002_master_data=>tt_payment_terms,
+        currency            TYPE zif_zsde002_master_data=>tt_currency,
+        product             TYPE zif_zsde002_master_data=>tt_product,
+        plant               TYPE zif_zsde002_master_data=>tt_plant,
+        storage_location    TYPE zif_zsde002_master_data=>tt_storage_location,
+        product_unit        TYPE zif_zsde002_master_data=>tt_product_unit,
+        condition_type      TYPE zif_zsde002_master_data=>tt_condition_type,
+      END OF ty_unknown.
 
     METHODS constructor
       IMPORTING io_master_data TYPE REF TO zif_zsde002_master_data OPTIONAL
@@ -82,6 +96,7 @@ CLASS zcl_zsde002_processor DEFINITION
     DATA go_master_data TYPE REF TO zif_zsde002_master_data.
     DATA go_param       TYPE REF TO zcl_param.
     DATA gs_param       TYPE ty_param.
+    DATA gs_unknown     TYPE ty_unknown.
 
     METHODS get_constant_param
       IMPORTING io_param  TYPE REF TO zcl_param
@@ -110,6 +125,10 @@ CLASS zcl_zsde002_processor DEFINITION
                 is_item         TYPE ty_item
                 it_pricing      TYPE tt_item_pricing
       RETURNING VALUE(rt_error) TYPE tt_error.
+
+    "! รวบ key ของทั้ง request แล้วถาม master data ครั้งเดียวต่อประเภท
+    METHODS prefetch_master_data
+      IMPORTING it_order TYPE zcl_zsde002_http=>tt_order_in.
 
     METHODS check_order_master_data
       IMPORTING is_order        TYPE ty_order
@@ -235,7 +254,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     rs_result-request_id = ls_request-request_id.
 
-    " 3. Process -------------------------------------------------------
+    " 3. Prefetch Master Data -----------------------------------------
+    prefetch_master_data( ls_request-orders ).
+
+    " 4. Process -------------------------------------------------------
     LOOP AT ls_request-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
 
       CLEAR: ls_order,
@@ -246,7 +268,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
              lt_item_pricings[],
              lt_error[].
 
-      " 3.1 Normalize --------------------------------------------------
+      " 4.1 Normalize --------------------------------------------------
       ls_order          = CORRESPONDING #( <lfs_order> ).
       lt_order_pricings = CORRESPONDING #( <lfs_order>-pricings ).
 
@@ -278,10 +300,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      " 3.2 Raw request of this order ----------------------------------
+      " 4.2 Raw request of this order ----------------------------------
       ls_order-request_body = to_request_body( <lfs_order> ).
 
-      " 3.3 Validate ---------------------------------------------------
+      " 4.3 Validate ---------------------------------------------------
       lt_error = VALUE #( BASE lt_error
                           FOR ls_order_error IN validate_order( is_order   = ls_order
                                                                 it_pricing = lt_order_pricings )
@@ -299,7 +321,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                           ( CORRESPONDING #( ls_item_error ) ) ).
       ENDLOOP.
 
-      " 3.4 Post -------------------------------------------------------
+      " 4.4 Post -------------------------------------------------------
       IF lt_error IS INITIAL.
         IF post( is_order = ls_order
                  it_item  = lt_item ) = abap_false.
@@ -313,10 +335,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         ENDIF.
       ENDIF.
 
-      " 3.5 Status -----------------------------------------------------
+      " 4.5 Status -----------------------------------------------------
       ls_order-order_status = COND #( WHEN lt_error IS INITIAL THEN 'S' ELSE 'E' ).
 
-      " 3.6 Save -------------------------------------------------------
+      " 4.6 Save -------------------------------------------------------
       " เขียน log เสมอ แม้ order จะไม่ผ่าน validation — ใบที่พังคือใบที่ต้องดูมากที่สุด
       IF save( is_order         = ls_order
                it_order_pricing = lt_order_pricings
@@ -333,7 +355,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " 3.7 Result -----------------------------------------------------
+      " 4.7 Result -----------------------------------------------------
       IF lt_error IS INITIAL.
         rs_result-passed = rs_result-passed + 1.
       ELSE.
@@ -617,46 +639,161 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD check_order_master_data.
+  METHOD prefetch_master_data.
 
-    TYPES:
-      BEGIN OF ty_partner,
-        customer TYPE zif_zsde002_master_data=>ty_cust_sales_area-customer,
-        value    TYPE string,
-        field    TYPE string,
-      END OF ty_partner.
-
-    " For Conversion
-    DATA ls_sales_area          TYPE zif_zsde002_master_data=>ty_sales_area.
-    DATA lv_sales_document_type TYPE zif_zsde002_master_data=>ty_sales_document_type.
-    DATA lv_payment_terms       TYPE zif_zsde002_master_data=>ty_payment_terms.
-    DATA lv_currency            TYPE zif_zsde002_master_data=>ty_currency.
-    DATA lv_condition_type      TYPE zif_zsde002_master_data=>ty_condition_type.
-
-    " Key Table
     DATA lt_sales_area          TYPE zif_zsde002_master_data=>tt_sales_area.
     DATA lt_cust_sales_area     TYPE zif_zsde002_master_data=>tt_cust_sales_area.
     DATA lt_sales_document_type TYPE zif_zsde002_master_data=>tt_sales_document_type.
     DATA lt_payment_terms       TYPE zif_zsde002_master_data=>tt_payment_terms.
     DATA lt_currency            TYPE zif_zsde002_master_data=>tt_currency.
+    DATA lt_product             TYPE zif_zsde002_master_data=>tt_product.
+    DATA lt_plant               TYPE zif_zsde002_master_data=>tt_plant.
+    DATA lt_storage_location    TYPE zif_zsde002_master_data=>tt_storage_location.
+    DATA lt_product_unit        TYPE zif_zsde002_master_data=>tt_product_unit.
     DATA lt_condition_type      TYPE zif_zsde002_master_data=>tt_condition_type.
-    DATA lt_partner             TYPE STANDARD TABLE OF ty_partner WITH EMPTY KEY.
 
-    " Sales Area
+    DATA lv_sales_doc_type      TYPE zif_zsde002_master_data=>ty_sales_document_type.
+    DATA lv_payment_terms       TYPE zif_zsde002_master_data=>ty_payment_terms.
+    DATA lv_currency            TYPE zif_zsde002_master_data=>ty_currency.
+    DATA lv_plant               TYPE zif_zsde002_master_data=>ty_plant.
+    DATA lv_storage_location    TYPE zif_zsde002_master_data=>ty_storage_location.
+    DATA lv_condition_type      TYPE zif_zsde002_master_data=>ty_condition_type.
+    DATA lv_material            TYPE zif_zsde002_master_data=>ty_product.
+
+    CLEAR gs_unknown.
+
+    LOOP AT it_order ASSIGNING FIELD-SYMBOL(<lfs_order>).
+
+      " Sales Area + Customer Sales Area
+      IF  <lfs_order>-sales_organization   IS NOT INITIAL
+      AND <lfs_order>-distribution_channel IS NOT INITIAL
+      AND <lfs_order>-division             IS NOT INITIAL.
+
+        INSERT VALUE #( sales_organization   = <lfs_order>-sales_organization
+                        distribution_channel = <lfs_order>-distribution_channel
+                        division             = <lfs_order>-division
+                      ) INTO TABLE lt_sales_area.
+
+        LOOP AT VALUE string_table( ( <lfs_order>-sold_to_party )
+                                    ( <lfs_order>-ship_to_party )
+                                    ( <lfs_order>-bill_to_party )
+                                    ( <lfs_order>-payer )
+                                    ( <lfs_order>-stock_van ) )
+             ASSIGNING FIELD-SYMBOL(<lfs_partner>).
+
+          CHECK <lfs_partner> IS NOT INITIAL.
+
+          INSERT VALUE #( sales_organization   = <lfs_order>-sales_organization
+                          distribution_channel = <lfs_order>-distribution_channel
+                          division             = <lfs_order>-division
+                          customer             = zcl_zsde002_validator=>to_internal_customer( <lfs_partner> )
+                        ) INTO TABLE lt_cust_sales_area.
+        ENDLOOP.
+
+      ENDIF.
+
+      " Sales Document Type
+      IF <lfs_order>-sales_order_type IS NOT INITIAL.
+        lv_sales_doc_type = <lfs_order>-sales_order_type.
+        INSERT lv_sales_doc_type INTO TABLE lt_sales_document_type.
+      ENDIF.
+
+      " Payment Terms
+      IF <lfs_order>-payment_term IS NOT INITIAL.
+        lv_payment_terms = <lfs_order>-payment_term.
+        INSERT lv_payment_terms INTO TABLE lt_payment_terms.
+      ENDIF.
+
+      " Currency
+      IF <lfs_order>-currency IS NOT INITIAL.
+        lv_currency = <lfs_order>-currency.
+        INSERT lv_currency INTO TABLE lt_currency.
+      ENDIF.
+
+      " Order Condition Type
+      LOOP AT <lfs_order>-pricings ASSIGNING FIELD-SYMBOL(<lfs_order_pricing>).
+        IF <lfs_order_pricing>-condition_type IS NOT INITIAL.
+          lv_condition_type = <lfs_order_pricing>-condition_type.
+          INSERT lv_condition_type INTO TABLE lt_condition_type.
+        ENDIF.
+      ENDLOOP.
+
+      " Item
+      LOOP AT <lfs_order>-items ASSIGNING FIELD-SYMBOL(<lfs_item>).
+
+        CLEAR lv_material.
+
+        IF <lfs_item>-material_number IS NOT INITIAL.
+          lv_material = zcl_zsde002_validator=>to_internal_material( <lfs_item>-material_number ).
+          INSERT lv_material INTO TABLE lt_product.
+        ENDIF.
+
+        IF <lfs_item>-plant IS NOT INITIAL.
+          lv_plant = <lfs_item>-plant.
+          INSERT lv_plant INTO TABLE lt_plant.
+        ENDIF.
+
+        IF <lfs_item>-storage_location IS NOT INITIAL.
+          lv_storage_location = <lfs_item>-storage_location.
+          INSERT lv_storage_location INTO TABLE lt_storage_location.
+        ENDIF.
+
+        IF  lv_material           IS NOT INITIAL
+        AND <lfs_item>-sales_unit IS NOT INITIAL.
+          INSERT VALUE #( product          = lv_material
+                          alternative_unit = <lfs_item>-sales_unit
+                        ) INTO TABLE lt_product_unit.
+        ENDIF.
+
+        LOOP AT <lfs_item>-pricings ASSIGNING FIELD-SYMBOL(<lfs_item_pricing>).
+          IF <lfs_item_pricing>-condition_type IS NOT INITIAL.
+            lv_condition_type = <lfs_item_pricing>-condition_type.
+            INSERT lv_condition_type INTO TABLE lt_condition_type.
+          ENDIF.
+        ENDLOOP.
+
+      ENDLOOP.
+
+    ENDLOOP.
+
+    " 10 SELECT ต่อ 1 request
+    gs_unknown-sales_area          = go_master_data->find_unknown_sales_area( lt_sales_area ).
+    gs_unknown-cust_sales_area     = go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ).
+    gs_unknown-sales_document_type = go_master_data->find_unknown_sales_doc_type( lt_sales_document_type ).
+    gs_unknown-payment_terms       = go_master_data->find_unknown_payment_terms( lt_payment_terms ).
+    gs_unknown-currency            = go_master_data->find_unknown_currency( lt_currency ).
+    gs_unknown-product             = go_master_data->find_unknown_product( lt_product ).
+    gs_unknown-plant               = go_master_data->find_unknown_plant( lt_plant ).
+    gs_unknown-storage_location    = go_master_data->find_unknown_storage_location( lt_storage_location ).
+    gs_unknown-product_unit        = go_master_data->find_unknown_product_unit( lt_product_unit ).
+    gs_unknown-condition_type      = go_master_data->find_unknown_condition_type( lt_condition_type ).
+
+  ENDMETHOD.
+
+
+  METHOD check_order_master_data.
+
+    " master data ถูก prefetch ไว้ใน gs_unknown แล้ว ตรงนี้เทียบในหน่วยความจำล้วน
+    TYPES: BEGIN OF ty_partner,
+             customer TYPE zif_zsde002_master_data=>ty_cust_sales_area-customer,
+             value    TYPE string,
+             field    TYPE string,
+           END OF ty_partner.
+
+    DATA lt_partner        TYPE STANDARD TABLE OF ty_partner WITH EMPTY KEY.
+    DATA lv_sales_doc_type TYPE zif_zsde002_master_data=>ty_sales_document_type.
+    DATA lv_payment_terms  TYPE zif_zsde002_master_data=>ty_payment_terms.
+    DATA lv_currency       TYPE zif_zsde002_master_data=>ty_currency.
+    DATA lv_condition_type TYPE zif_zsde002_master_data=>ty_condition_type.
+
     IF  is_order-sales_organization   IS NOT INITIAL
     AND is_order-distribution_channel IS NOT INITIAL
     AND is_order-division             IS NOT INITIAL.
 
-      ls_sales_area-sales_organization   = is_order-sales_organization.
-      ls_sales_area-distribution_channel = is_order-distribution_channel.
-      ls_sales_area-division             = is_order-division.
-
-      INSERT VALUE #( sales_organization   = ls_sales_area-sales_organization
-                      distribution_channel = ls_sales_area-distribution_channel
-                      division             = ls_sales_area-division
-                    ) INTO TABLE lt_sales_area.
-
-      IF go_master_data->find_unknown_sales_area( lt_sales_area ) IS NOT INITIAL.
+      " Sales Area
+      IF line_exists( gs_unknown-sales_area[ sales_organization   = is_order-sales_organization
+                                             distribution_channel = is_order-distribution_channel
+                                             division             = is_order-division ] ).
         APPEND VALUE #( msgno            = '200'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '200'
@@ -667,64 +804,43 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                         field            = `SalesOrganization, DistributionChannel, Division`
                       ) TO rt_error.
       ENDIF.
-    ENDIF.
 
-    " Customer Sales Area
-    IF  is_order-sales_organization   IS NOT INITIAL
-    AND is_order-distribution_channel IS NOT INITIAL
-    AND is_order-division             IS NOT INITIAL.
-
+      " Customer Sales Area
       IF is_order-sold_to_party IS NOT INITIAL.
-        APPEND VALUE #( customer = |{ is_order-sold_to_party ALPHA = IN }|
+        APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-sold_to_party )
                         value    = |{ is_order-sold_to_party }|
-                        field    = `sold_to_party`
-                      ) TO lt_partner.
+                        field    = `sold_to_party` ) TO lt_partner.
       ENDIF.
 
       IF is_order-ship_to_party IS NOT INITIAL.
-        APPEND VALUE #( customer = |{ is_order-ship_to_party ALPHA = IN }|
+        APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-ship_to_party )
                         value    = |{ is_order-ship_to_party }|
-                        field    = `ship_to_party`
-                      ) TO lt_partner.
+                        field    = `ship_to_party` ) TO lt_partner.
       ENDIF.
 
       IF is_order-bill_to_party IS NOT INITIAL.
-        APPEND VALUE #( customer = |{ is_order-bill_to_party ALPHA = IN }|
+        APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-bill_to_party )
                         value    = |{ is_order-bill_to_party }|
-                        field    = `bill_to_party`
-                      ) TO lt_partner.
+                        field    = `bill_to_party` ) TO lt_partner.
       ENDIF.
 
       IF is_order-payer IS NOT INITIAL.
-        APPEND VALUE #( customer = |{ is_order-payer ALPHA = IN }|
+        APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-payer )
                         value    = |{ is_order-payer }|
-                        field    = `payer`
-                      ) TO lt_partner.
+                        field    = `payer` ) TO lt_partner.
       ENDIF.
 
       IF is_order-stock_van IS NOT INITIAL.
-        APPEND VALUE #( customer = |{ is_order-stock_van ALPHA = IN }|
+        APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-stock_van )
                         value    = |{ is_order-stock_van }|
-                        field    = `stock_van`
-                      ) TO lt_partner.
+                        field    = `stock_van` ) TO lt_partner.
       ENDIF.
 
-      " partner หลายรายอาจเป็นลูกค้าคนเดียวกัน — INSERT ซ้ำจะได้ sy-subrc 4 ปล่อยผ่านได้
       LOOP AT lt_partner ASSIGNING FIELD-SYMBOL(<lfs_partner>).
-        INSERT VALUE #( sales_organization   = is_order-sales_organization
-                        distribution_channel = is_order-distribution_channel
-                        division             = is_order-division
-                        customer             = <lfs_partner>-customer
-                      ) INTO TABLE lt_cust_sales_area.
-      ENDLOOP.
-
-      DATA(lt_unknown_customer) = go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ).
-
-      LOOP AT lt_partner ASSIGNING <lfs_partner>.
-        IF line_exists( lt_unknown_customer[ sales_organization   = is_order-sales_organization
-                                             distribution_channel = is_order-distribution_channel
-                                             division             = is_order-division
-                                             customer             = <lfs_partner>-customer ] ).
+        IF line_exists( gs_unknown-cust_sales_area[ sales_organization   = is_order-sales_organization
+                                                    distribution_channel = is_order-distribution_channel
+                                                    division             = is_order-division
+                                                    customer             = <lfs_partner>-customer ] ).
           APPEND VALUE #( msgno            = '201'
                           msgty            = 'E'
                           msgtx            = message_text( iv_msgno = '201'
@@ -741,11 +857,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     ENDIF.
 
     " Sales Document Type
-    IF  is_order-sales_order_type IS NOT INITIAL.
-      lv_sales_document_type = is_order-sales_order_type.
-      INSERT lv_sales_document_type INTO TABLE lt_sales_document_type.
+    IF is_order-sales_order_type IS NOT INITIAL.
+      lv_sales_doc_type = is_order-sales_order_type.
 
-      IF go_master_data->find_unknown_sales_doc_type( lt_sales_document_type ) IS NOT INITIAL.
+      IF line_exists( gs_unknown-sales_document_type[ table_line = lv_sales_doc_type ] ).
         APPEND VALUE #( msgno            = '202'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '202'
@@ -757,11 +872,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     ENDIF.
 
     " Payment Terms
-    IF  is_order-payment_term IS NOT INITIAL.
+    IF is_order-payment_term IS NOT INITIAL.
       lv_payment_terms = is_order-payment_term.
-      INSERT lv_payment_terms INTO TABLE lt_payment_terms.
 
-      IF go_master_data->find_unknown_payment_terms( lt_payment_terms ) IS NOT INITIAL.
+      IF line_exists( gs_unknown-payment_terms[ table_line = lv_payment_terms ] ).
         APPEND VALUE #( msgno            = '203'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '203'
@@ -773,11 +887,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     ENDIF.
 
     " Currency
-    IF  is_order-currency IS NOT INITIAL.
+    IF is_order-currency IS NOT INITIAL.
       lv_currency = is_order-currency.
-      INSERT lv_currency INTO TABLE lt_currency.
 
-      IF go_master_data->find_unknown_currency( lt_currency ) IS NOT INITIAL.
+      IF line_exists( gs_unknown-currency[ table_line = lv_currency ] ).
         APPEND VALUE #( msgno            = '204'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '204'
@@ -790,19 +903,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     " Order Condition Type
     LOOP AT it_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
-      IF  <lfs_pricing>-condition_type IS NOT INITIAL.
-        lv_condition_type = <lfs_pricing>-condition_type.
-        INSERT lv_condition_type INTO TABLE lt_condition_type.
-      ENDIF.
-    ENDLOOP.
+      CHECK <lfs_pricing>-condition_type IS NOT INITIAL.
 
-    DATA(lt_unknown_condition_type) = go_master_data->find_unknown_condition_type( lt_condition_type ).
-
-    LOOP AT it_pricing ASSIGNING <lfs_pricing>.
       lv_condition_type = <lfs_pricing>-condition_type.
 
-      IF <lfs_pricing>-condition_type IS NOT INITIAL
-      AND line_exists( lt_unknown_condition_type[ table_line = lv_condition_type ] ).
+      IF line_exists( gs_unknown-condition_type[ table_line = lv_condition_type ] ).
         APPEND VALUE #( msgno            = '205'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '205'
@@ -818,19 +923,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
   METHOD check_item_master_data.
 
-    " For Conversion
+    DATA lv_material         TYPE zif_zsde002_master_data=>ty_product.
     DATA lv_product          TYPE zif_zsde002_master_data=>ty_product.
-    DATA lt_product_unit     TYPE zif_zsde002_master_data=>tt_product_unit.
     DATA lv_plant            TYPE zif_zsde002_master_data=>ty_plant.
     DATA lv_storage_location TYPE zif_zsde002_master_data=>ty_storage_location.
     DATA lv_condition_type   TYPE zif_zsde002_master_data=>ty_condition_type.
-    DATA lv_material         TYPE zif_zsde002_master_data=>ty_product.
-
-    " Key Table
-    DATA lt_product          TYPE zif_zsde002_master_data=>tt_product.
-    DATA lt_plant            TYPE zif_zsde002_master_data=>tt_plant.
-    DATA lt_storage_location TYPE zif_zsde002_master_data=>tt_storage_location.
-    DATA lt_condition_type   TYPE zif_zsde002_master_data=>tt_condition_type.
 
     " Product
     " ส่ง MaterialNumber มา → เช็คกับ I_Product
@@ -839,9 +936,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     IF is_item-material_number IS NOT INITIAL.
 
       lv_product = zcl_zsde002_validator=>to_internal_material( is_item-material_number ).
-      INSERT lv_product INTO TABLE lt_product.
 
-      IF go_master_data->find_unknown_product( lt_product ) IS NOT INITIAL.
+      IF line_exists( gs_unknown-product[ table_line = lv_product ] ).
         APPEND VALUE #( msgno            = '250'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '250'
@@ -857,11 +953,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     ENDIF.
 
     " Plant
-    IF  is_item-plant IS NOT INITIAL.
+    IF is_item-plant IS NOT INITIAL.
       lv_plant = is_item-plant.
-      INSERT lv_plant INTO TABLE lt_plant.
 
-      IF go_master_data->find_unknown_plant( lt_plant ) IS NOT INITIAL.
+      IF line_exists( gs_unknown-plant[ table_line = lv_plant ] ).
         APPEND VALUE #( msgno            = '251'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '251'
@@ -874,11 +969,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     ENDIF.
 
     " Storage Location
-    IF  is_item-storage_location IS NOT INITIAL.
+    IF is_item-storage_location IS NOT INITIAL.
       lv_storage_location = is_item-storage_location.
-      INSERT lv_storage_location INTO TABLE lt_storage_location.
 
-      IF go_master_data->find_unknown_storage_location( lt_storage_location ) IS NOT INITIAL.
+      IF line_exists( gs_unknown-storage_location[ table_line = lv_storage_location ] ).
         APPEND VALUE #( msgno            = '252'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '252'
@@ -891,16 +985,13 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    " Base Unit
+    " Sales Unit
     " ข้ามถ้า material ยังหาไม่เจอ จะได้ไม่ขึ้น error ซ้อนกัน 2 บรรทัด
-    IF  lv_material          IS NOT INITIAL
-    AND is_item-sales_unit   IS NOT INITIAL.
+    IF  lv_material        IS NOT INITIAL
+    AND is_item-sales_unit IS NOT INITIAL.
 
-      INSERT VALUE #( product          = lv_material
-                      alternative_unit = is_item-sales_unit
-                    ) INTO TABLE lt_product_unit.
-
-      IF go_master_data->find_unknown_product_unit( lt_product_unit ) IS NOT INITIAL.
+      IF line_exists( gs_unknown-product_unit[ product          = lv_material
+                                               alternative_unit = is_item-sales_unit ] ).
         APPEND VALUE #( msgno            = '253'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '253'
@@ -917,19 +1008,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     " Item Condition Type
     LOOP AT it_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
-      IF  <lfs_pricing>-condition_type IS NOT INITIAL.
-        lv_condition_type = <lfs_pricing>-condition_type.
-        INSERT lv_condition_type INTO TABLE lt_condition_type.
-      ENDIF.
-    ENDLOOP.
+      CHECK <lfs_pricing>-condition_type IS NOT INITIAL.
 
-    DATA(lt_unknown_condition_type) = go_master_data->find_unknown_condition_type( lt_condition_type ).
-
-    LOOP AT it_pricing ASSIGNING <lfs_pricing>.
       lv_condition_type = <lfs_pricing>-condition_type.
 
-      IF <lfs_pricing>-condition_type IS NOT INITIAL
-      AND line_exists( lt_unknown_condition_type[ table_line = lv_condition_type ] ).
+      IF line_exists( gs_unknown-condition_type[ table_line = lv_condition_type ] ).
         APPEND VALUE #( msgno            = '254'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '254'
