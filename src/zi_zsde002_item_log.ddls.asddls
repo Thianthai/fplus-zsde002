@@ -19,33 +19,33 @@ define view entity ZI_ZSDE002_ITEM_LOG
       @EndUserText.label: 'Item'
       item                  as Item,
       @EndUserText.label: 'Material Number'
-      materialnumber        as MaterialNumber,
+      material_number       as MaterialNumber,
       @EndUserText.label: 'Customer Material'
-      customermaterial      as CustomerMaterial,
+      customer_material     as CustomerMaterial,
       @EndUserText.label: 'Item Category'
-      itemcategory          as ItemCategory,
+      item_category         as ItemCategory,
       @EndUserText.label: 'Requested Quantity'
-      requestedquantity     as RequestedQuantity,
+      requested_quantity    as RequestedQuantity,
       @EndUserText.label: 'Sales Unit'
-      salesunit             as SalesUnit,
+      sales_unit            as SalesUnit,
       @EndUserText.label: 'Plant'
       plant                 as Plant,
       @EndUserText.label: 'Storage Location'
-      storagelocation       as StorageLocation,
+      storage_location      as StorageLocation,
       @EndUserText.label: 'Material Tax Class'
-      mattaxclass           as MatTaxClass,
+      mat_tax_class         as MatTaxClass,
       @EndUserText.label: 'Sales Text'
-      salestext             as SalesText,
+      sales_text            as SalesText,
       @EndUserText.label: 'Unit Text'
-      unittext              as UnitText,
+      unit_text             as UnitText,
       @EndUserText.label: 'Promotion ID Text'
-      promotionidtext       as PromotionIdText,
+      promotion_id_text     as PromotionIdText,
       @EndUserText.label: 'Batch'
       batch                 as Batch,
       @EndUserText.label: 'Route'
       route                 as Route,
       @EndUserText.label: 'SF Item ID Ref.'
-      sfitemidref           as SfItemIdRef,
+      sf_item_id_ref        as SfItemIdRef,
 
       @Semantics.systemDateTime.localInstanceLastChangedAt: true
       local_last_changed_at as LocalLastChangedAt,

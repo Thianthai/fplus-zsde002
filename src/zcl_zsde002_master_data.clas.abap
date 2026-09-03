@@ -13,9 +13,9 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
   METHOD zif_zsde002_master_data~find_unknown_sales_area.
 
-    DATA lr_salesorganization   TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-salesorganization.
-    DATA lr_distributionchannel TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-distributionchannel.
-    DATA lr_division            TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-division.
+    DATA lr_sales_organization   TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-sales_organization.
+    DATA lr_distribution_channel TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-distribution_channel.
+    DATA lr_division             TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-division.
 
     IF it_key IS INITIAL.
       RETURN.
@@ -23,14 +23,14 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
     LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
 
-      IF NOT line_exists( lr_salesorganization[ low = <lfs_key>-salesorganization ] ).
-        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-salesorganization )
-                     TO lr_salesorganization.
+      IF NOT line_exists( lr_sales_organization[ low = <lfs_key>-sales_organization ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-sales_organization )
+                     TO lr_sales_organization.
       ENDIF.
 
-      IF NOT line_exists( lr_distributionchannel[ low = <lfs_key>-distributionchannel ] ).
-        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-distributionchannel )
-                     TO lr_distributionchannel.
+      IF NOT line_exists( lr_distribution_channel[ low = <lfs_key>-distribution_channel ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-distribution_channel )
+                     TO lr_distribution_channel.
       ENDIF.
 
       IF NOT line_exists( lr_division[ low = <lfs_key>-division ] ).
@@ -44,14 +44,14 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
       FIELDS SalesOrganization,
              DistributionChannel,
              Division
-      WHERE SalesOrganization   IN @lr_salesorganization
-        AND DistributionChannel IN @lr_distributionchannel
+      WHERE SalesOrganization   IN @lr_sales_organization
+        AND DistributionChannel IN @lr_distribution_channel
         AND Division            IN @lr_division
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING <lfs_key>.
-      IF NOT line_exists( lt_existing[ salesorganization   = <lfs_key>-salesorganization
-                                       distributionchannel = <lfs_key>-distributionchannel
+      IF NOT line_exists( lt_existing[ salesorganization   = <lfs_key>-sales_organization
+                                       distributionchannel = <lfs_key>-distribution_channel
                                        division            = <lfs_key>-division ] ).
         INSERT <lfs_key> INTO TABLE rt_result.
       ENDIF.
@@ -62,10 +62,10 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
   METHOD zif_zsde002_master_data~find_unknown_cust_sales_area.
 
-    DATA lr_salesorganization   TYPE RANGE OF zif_zsde002_master_data=>ty_cust_sales_area-salesorganization.
-    DATA lr_distributionchannel TYPE RANGE OF zif_zsde002_master_data=>ty_cust_sales_area-distributionchannel.
-    DATA lr_division            TYPE RANGE OF zif_zsde002_master_data=>ty_cust_sales_area-division.
-    DATA lr_customer            TYPE RANGE OF zif_zsde002_master_data=>ty_cust_sales_area-customer.
+    DATA lr_sales_organization   TYPE RANGE OF zif_zsde002_master_data=>ty_cust_sales_area-sales_organization.
+    DATA lr_distribution_channel TYPE RANGE OF zif_zsde002_master_data=>ty_cust_sales_area-distribution_channel.
+    DATA lr_division             TYPE RANGE OF zif_zsde002_master_data=>ty_cust_sales_area-division.
+    DATA lr_customer             TYPE RANGE OF zif_zsde002_master_data=>ty_cust_sales_area-customer.
 
     IF it_key IS INITIAL.
       RETURN.
@@ -73,14 +73,14 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
     LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
 
-      IF NOT line_exists( lr_salesorganization[ low = <lfs_key>-salesorganization ] ).
-        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-salesorganization )
-                     TO lr_salesorganization.
+      IF NOT line_exists( lr_sales_organization[ low = <lfs_key>-sales_organization ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-sales_organization )
+                     TO lr_sales_organization.
       ENDIF.
 
-      IF NOT line_exists( lr_distributionchannel[ low = <lfs_key>-distributionchannel ] ).
-        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-distributionchannel )
-                     TO lr_distributionchannel.
+      IF NOT line_exists( lr_distribution_channel[ low = <lfs_key>-distribution_channel ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-distribution_channel )
+                     TO lr_distribution_channel.
       ENDIF.
 
       IF NOT line_exists( lr_division[ low = <lfs_key>-division ] ).
@@ -104,15 +104,15 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
              sa~DistributionChannel,
              sa~Division,
              csa~Customer
-      WHERE sa~SalesOrganization   IN @lr_salesorganization
-        AND sa~DistributionChannel IN @lr_distributionchannel
+      WHERE sa~SalesOrganization   IN @lr_sales_organization
+        AND sa~DistributionChannel IN @lr_distribution_channel
         AND sa~Division            IN @lr_division
         AND csa~Customer           IN @lr_customer
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING <lfs_key>.
-      IF NOT line_exists( lt_existing[ SalesOrganization   = <lfs_key>-salesorganization
-                                       DistributionChannel = <lfs_key>-distributionchannel
+      IF NOT line_exists( lt_existing[ SalesOrganization   = <lfs_key>-sales_organization
+                                       DistributionChannel = <lfs_key>-distribution_channel
                                        Division            = <lfs_key>-division
                                        Customer            = <lfs_key>-customer ] ).
         INSERT <lfs_key> INTO TABLE rt_result.
@@ -122,20 +122,20 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_zsde002_master_data~find_unknown_salesdocumenttype.
+  METHOD zif_zsde002_master_data~find_unknown_sales_doc_type.
 
-    DATA lr_salesdocumenttype TYPE RANGE OF zif_zsde002_master_data=>ty_salesdocumenttype.
+    DATA lr_sales_document_type TYPE RANGE OF zif_zsde002_master_data=>ty_sales_document_type.
 
     IF it_key IS INITIAL.
       RETURN.
     ENDIF.
 
-    lr_salesdocumenttype = VALUE #( FOR <lfs_for> IN it_key
-                                  ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+    lr_sales_document_type = VALUE #( FOR <lfs_for> IN it_key
+                                    ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
 
     SELECT FROM I_SalesDocumentType
       FIELDS SalesDocumentType
-      WHERE SalesDocumentType IN @lr_salesdocumenttype
+      WHERE SalesDocumentType IN @lr_sales_document_type
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
@@ -147,20 +147,20 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_zsde002_master_data~find_unknown_paymentterms.
+  METHOD zif_zsde002_master_data~find_unknown_payment_terms.
 
-    DATA lr_paymentterms TYPE RANGE OF zif_zsde002_master_data=>ty_paymentterms.
+    DATA lr_payment_terms TYPE RANGE OF zif_zsde002_master_data=>ty_payment_terms.
 
     IF it_key IS INITIAL.
       RETURN.
     ENDIF.
 
-    lr_paymentterms = VALUE #( FOR <lfs_for> IN it_key
-                             ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+    lr_payment_terms = VALUE #( FOR <lfs_for> IN it_key
+                              ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
 
     SELECT FROM I_PaymentTerms
       FIELDS PaymentTerms
-      WHERE PaymentTerms IN @lr_paymentterms
+      WHERE PaymentTerms IN @lr_payment_terms
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
@@ -222,20 +222,20 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_zsde002_master_data~find_unknown_storagelocation.
+  METHOD zif_zsde002_master_data~find_unknown_storage_location.
 
-    DATA lr_storagelocation TYPE RANGE OF zif_zsde002_master_data=>ty_storagelocation.
+    DATA lr_storage_location TYPE RANGE OF zif_zsde002_master_data=>ty_storage_location.
 
     IF it_key IS INITIAL.
       RETURN.
     ENDIF.
 
-    lr_storagelocation = VALUE #( FOR <lfs_for> IN it_key
-                                ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+    lr_storage_location = VALUE #( FOR <lfs_for> IN it_key
+                                 ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
 
     SELECT FROM I_StorageLocation
       FIELDS StorageLocation
-      WHERE StorageLocation IN @lr_storagelocation
+      WHERE StorageLocation IN @lr_storage_location
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
@@ -247,10 +247,10 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_zsde002_master_data~find_unknown_baseunit.
+  METHOD zif_zsde002_master_data~find_unknown_base_unit.
 
-    DATA lr_product  TYPE RANGE OF zif_zsde002_master_data=>ty_base_unit-product.
-    DATA lr_baseunit TYPE RANGE OF zif_zsde002_master_data=>ty_base_unit-baseunit.
+    DATA lr_product   TYPE RANGE OF zif_zsde002_master_data=>ty_base_unit-product.
+    DATA lr_base_unit TYPE RANGE OF zif_zsde002_master_data=>ty_base_unit-base_unit.
 
     IF it_key IS INITIAL.
       RETURN.
@@ -263,9 +263,9 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
                      TO lr_product.
       ENDIF.
 
-      IF NOT line_exists( lr_baseunit[ low = <lfs_key>-baseunit ] ).
-        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-baseunit )
-                     TO lr_baseunit.
+      IF NOT line_exists( lr_base_unit[ low = <lfs_key>-base_unit ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-base_unit )
+                     TO lr_base_unit.
       ENDIF.
 
     ENDLOOP.
@@ -274,12 +274,12 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
       FIELDS Product,
              BaseUnit
       WHERE Product  IN @lr_product
-        AND BaseUnit IN @lr_baseunit
+        AND BaseUnit IN @lr_base_unit
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING <lfs_key>.
       IF NOT line_exists( lt_existing[ Product  = <lfs_key>-product
-                                       BaseUnit = <lfs_key>-baseunit ] ).
+                                       BaseUnit = <lfs_key>-base_unit ] ).
         INSERT <lfs_key> INTO TABLE rt_result.
       ENDIF.
     ENDLOOP.
@@ -287,20 +287,20 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD zif_zsde002_master_data~find_unknown_conditiontype.
+  METHOD zif_zsde002_master_data~find_unknown_condition_type.
 
-    DATA lr_conditiontype TYPE RANGE OF zif_zsde002_master_data=>ty_conditiontype.
+    DATA lr_condition_type TYPE RANGE OF zif_zsde002_master_data=>ty_condition_type.
 
     IF it_key IS INITIAL.
       RETURN.
     ENDIF.
 
-    lr_conditiontype = VALUE #( FOR <lfs_for> IN it_key
-                              ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+    lr_condition_type = VALUE #( FOR <lfs_for> IN it_key
+                               ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
 
     SELECT FROM I_ConditionType
       FIELDS ConditionType
-      WHERE ConditionType IN @lr_conditiontype
+      WHERE ConditionType IN @lr_condition_type
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).

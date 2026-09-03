@@ -2,56 +2,56 @@ INTERFACE zif_zsde002_master_data
   PUBLIC .
 
   TYPES:
-    ty_salesdocumenttype TYPE I_SalesDocumentType-SalesDocumentType,
-    ty_paymentterms      TYPE I_PaymentTerms-PaymentTerms,
-    ty_product           TYPE I_Product-Product,
-    ty_plant             TYPE I_Plant-Plant,
-    ty_storagelocation   TYPE I_StorageLocation-StorageLocation,
-    ty_conditiontype     TYPE I_ConditionType-ConditionType,
-    ty_currency          TYPE I_Currency-Currency.
+    ty_sales_document_type TYPE I_SalesDocumentType-SalesDocumentType,
+    ty_payment_terms       TYPE I_PaymentTerms-PaymentTerms,
+    ty_product             TYPE I_Product-Product,
+    ty_plant               TYPE I_Plant-Plant,
+    ty_storage_location    TYPE I_StorageLocation-StorageLocation,
+    ty_condition_type      TYPE I_ConditionType-ConditionType,
+    ty_currency            TYPE I_Currency-Currency.
 
   TYPES:
     "! Sales Area
     BEGIN OF ty_sales_area,
-      salesorganization   TYPE I_SalesArea-SalesOrganization,
-      distributionchannel TYPE I_SalesArea-DistributionChannel,
-      division            TYPE I_SalesArea-Division,
+      sales_organization   TYPE I_SalesArea-SalesOrganization,
+      distribution_channel TYPE I_SalesArea-DistributionChannel,
+      division             TYPE I_SalesArea-Division,
     END OF ty_sales_area,
 
     "! Customer Sales Area
     BEGIN OF ty_cust_sales_area,
-      salesorganization   TYPE I_CustomerSalesArea-SalesOrganization,
-      distributionchannel TYPE I_CustomerSalesArea-DistributionChannel,
-      division            TYPE I_CustomerSalesArea-Division,
-      customer            TYPE I_CustomerSalesArea-Customer,
+      sales_organization   TYPE I_CustomerSalesArea-SalesOrganization,
+      distribution_channel TYPE I_CustomerSalesArea-DistributionChannel,
+      division             TYPE I_CustomerSalesArea-Division,
+      customer             TYPE I_CustomerSalesArea-Customer,
     END OF ty_cust_sales_area,
 
     BEGIN OF ty_base_unit,
-      product  TYPE I_ProductUnitsOfMeasure-Product,
-      baseunit TYPE I_ProductUnitsOfMeasure-BaseUnit,
+      product   TYPE I_ProductUnitsOfMeasure-Product,
+      base_unit TYPE I_ProductUnitsOfMeasure-BaseUnit,
     END OF ty_base_unit.
 
   TYPES:
-    tt_salesdocumenttype TYPE SORTED TABLE OF ty_salesdocumenttype
-                         WITH UNIQUE KEY table_line,
-    tt_paymentterms      TYPE SORTED TABLE OF ty_paymentterms
-                         WITH UNIQUE KEY table_line,
-    tt_product           TYPE SORTED TABLE OF ty_product
-                         WITH UNIQUE KEY table_line,
-    tt_plant             TYPE SORTED TABLE OF ty_plant
-                         WITH UNIQUE KEY table_line,
-    tt_storagelocation   TYPE SORTED TABLE OF ty_storagelocation
-                         WITH UNIQUE KEY table_line,
-    tt_baseunit          TYPE SORTED TABLE OF ty_base_unit
-                         WITH UNIQUE KEY product baseunit,
-    tt_conditiontype     TYPE SORTED TABLE OF ty_conditiontype
-                         WITH UNIQUE KEY table_line,
-    tt_currency          TYPE SORTED TABLE OF ty_currency
-                         WITH UNIQUE KEY table_line,
-    tt_sales_area        TYPE SORTED TABLE OF ty_sales_area
-                         WITH UNIQUE KEY salesorganization distributionchannel division,
-    tt_cust_sales_area   TYPE SORTED TABLE OF ty_cust_sales_area
-                         WITH UNIQUE KEY salesorganization distributionchannel division customer.
+    tt_sales_document_type TYPE SORTED TABLE OF ty_sales_document_type
+                           WITH UNIQUE KEY table_line,
+    tt_payment_terms       TYPE SORTED TABLE OF ty_payment_terms
+                           WITH UNIQUE KEY table_line,
+    tt_product             TYPE SORTED TABLE OF ty_product
+                           WITH UNIQUE KEY table_line,
+    tt_plant               TYPE SORTED TABLE OF ty_plant
+                           WITH UNIQUE KEY table_line,
+    tt_storage_location    TYPE SORTED TABLE OF ty_storage_location
+                           WITH UNIQUE KEY table_line,
+    tt_base_unit           TYPE SORTED TABLE OF ty_base_unit
+                           WITH UNIQUE KEY product base_unit,
+    tt_condition_type      TYPE SORTED TABLE OF ty_condition_type
+                           WITH UNIQUE KEY table_line,
+    tt_currency            TYPE SORTED TABLE OF ty_currency
+                           WITH UNIQUE KEY table_line,
+    tt_sales_area          TYPE SORTED TABLE OF ty_sales_area
+                           WITH UNIQUE KEY sales_organization distribution_channel division,
+    tt_cust_sales_area     TYPE SORTED TABLE OF ty_cust_sales_area
+                           WITH UNIQUE KEY sales_organization distribution_channel division customer.
 
   METHODS find_unknown_sales_area
     IMPORTING it_key           TYPE tt_sales_area
@@ -61,13 +61,13 @@ INTERFACE zif_zsde002_master_data
     IMPORTING it_key           TYPE tt_cust_sales_area
     RETURNING VALUE(rt_result) TYPE tt_cust_sales_area.
 
-  METHODS find_unknown_salesdocumenttype
-    IMPORTING it_key           TYPE tt_salesdocumenttype
-    RETURNING VALUE(rt_result) TYPE tt_salesdocumenttype.
+  METHODS find_unknown_sales_doc_type
+    IMPORTING it_key           TYPE tt_sales_document_type
+    RETURNING VALUE(rt_result) TYPE tt_sales_document_type.
 
-  METHODS find_unknown_paymentterms
-    IMPORTING it_key           TYPE tt_paymentterms
-    RETURNING VALUE(rt_result) TYPE tt_paymentterms.
+  METHODS find_unknown_payment_terms
+    IMPORTING it_key           TYPE tt_payment_terms
+    RETURNING VALUE(rt_result) TYPE tt_payment_terms.
 
   METHODS find_unknown_product
     IMPORTING it_key           TYPE tt_product
@@ -77,17 +77,17 @@ INTERFACE zif_zsde002_master_data
     IMPORTING it_key           TYPE tt_plant
     RETURNING VALUE(rt_result) TYPE tt_plant.
 
-  METHODS find_unknown_storagelocation
-    IMPORTING it_key           TYPE tt_storagelocation
-    RETURNING VALUE(rt_result) TYPE tt_storagelocation.
+  METHODS find_unknown_storage_location
+    IMPORTING it_key           TYPE tt_storage_location
+    RETURNING VALUE(rt_result) TYPE tt_storage_location.
 
-  METHODS find_unknown_baseunit
-    IMPORTING it_key           TYPE tt_baseunit
-    RETURNING VALUE(rt_result) TYPE tt_baseunit.
+  METHODS find_unknown_base_unit
+    IMPORTING it_key           TYPE tt_base_unit
+    RETURNING VALUE(rt_result) TYPE tt_base_unit.
 
-  METHODS find_unknown_conditiontype
-    IMPORTING it_key           TYPE tt_conditiontype
-    RETURNING VALUE(rt_result) TYPE tt_conditiontype.
+  METHODS find_unknown_condition_type
+    IMPORTING it_key           TYPE tt_condition_type
+    RETURNING VALUE(rt_result) TYPE tt_condition_type.
 
   METHODS find_unknown_currency
     IMPORTING it_key           TYPE tt_currency

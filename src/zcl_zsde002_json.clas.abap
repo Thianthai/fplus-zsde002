@@ -51,9 +51,9 @@ CLASS zcl_zsde002_json IMPLEMENTATION.
     ENDTRY.
 
     LOOP AT es_request-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
-      <lfs_order>-customerreferencedate = to_internal_date( <lfs_order>-customerreferencedate ).
-      <lfs_order>-documentdate          = to_internal_date( <lfs_order>-documentdate ).
-      <lfs_order>-reqdeliverydate       = to_internal_date( <lfs_order>-reqdeliverydate ).
+      <lfs_order>-customer_reference_date = to_internal_date( <lfs_order>-customer_reference_date ).
+      <lfs_order>-document_date           = to_internal_date( <lfs_order>-document_date ).
+      <lfs_order>-req_delivery_date       = to_internal_date( <lfs_order>-req_delivery_date ).
     ENDLOOP.
 
   ENDMETHOD.

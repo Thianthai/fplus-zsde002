@@ -10,90 +10,90 @@ define root view entity ZR_ZSDE002_ORDER_LOG
   composition [0..*] of ZI_ZSDE002_ITEM_LOG   as _ItemLog
 {
       @EndUserText.label: 'Order Log UUID'
-  key order_uuid                  as OrderUUID,
+  key order_uuid                    as OrderUUID,
 
       @EndUserText.label: 'Request ID'
-      request_id                  as RequestId,
+      request_id                    as RequestId,
       @EndUserText.label: 'Request Body (JSON)'
-      request_body                as RequestBody,
+      request_body                  as RequestBody,
 
       @EndUserText.label: 'SF Header ID Ref.'
-      sfheaderidref               as SfHeaderIdRef,
+      sf_header_id_ref              as SfHeaderIdRef,
       @EndUserText.label: 'Sales Order Temp ID'
-      salesordertempid            as SalesOrderTempId,
+      sales_order_temp_id           as SalesOrderTempId,
       @EndUserText.label: 'Process Type'
-      processtype                 as ProcessType,
+      process_type                  as ProcessType,
       @EndUserText.label: 'Transaction Type'
-      trantype                    as TranType,
+      tran_type                     as TranType,
       @EndUserText.label: 'Sales Order Type'
-      salesordertype              as SalesOrderType,
+      sales_order_type              as SalesOrderType,
       @EndUserText.label: 'Sales Organization'
-      salesorganization           as SalesOrganization,
+      sales_organization            as SalesOrganization,
       @EndUserText.label: 'Distribution Channel'
-      distributionchannel         as DistributionChannel,
+      distribution_channel          as DistributionChannel,
       @EndUserText.label: 'Division'
-      division                    as Division,
+      division                      as Division,
       @EndUserText.label: 'Sold-to Party'
-      soldtoparty                 as SoldToParty,
+      sold_to_party                 as SoldToParty,
       @EndUserText.label: 'Customer Branch'
-      customerbranch              as CustomerBranch,
+      customer_branch               as CustomerBranch,
       @EndUserText.label: 'Ship-to Party'
-      shiptoparty                 as ShipToParty,
+      ship_to_party                 as ShipToParty,
       @EndUserText.label: 'Bill-to Party'
-      billtoparty                 as BillToParty,
+      bill_to_party                 as BillToParty,
       @EndUserText.label: 'Payer'
-      payer                       as Payer,
+      payer                         as Payer,
       @EndUserText.label: 'Stock Van'
-      stockvan                    as StockVan,
+      stock_van                     as StockVan,
       @EndUserText.label: 'Customer Reference'
-      customerreference           as CustomerReference,
+      customer_reference            as CustomerReference,
       @EndUserText.label: 'Customer Reference Date'
-      customerreferencedate       as CustomerReferenceDate,
+      customer_reference_date       as CustomerReferenceDate,
       @EndUserText.label: 'Document Date'
-      documentdate                as DocumentDate,
+      document_date                 as DocumentDate,
       @EndUserText.label: 'Req. Delivery Date'
-      reqdeliverydate             as ReqDeliveryDate,
+      req_delivery_date             as ReqDeliveryDate,
       @EndUserText.label: 'Shipping Conditions'
-      shippingconditions          as ShippingConditions,
+      shipping_conditions           as ShippingConditions,
       @EndUserText.label: 'Payment Transaction Ref.'
-      paymenttransactionreference as PaymentTransactionReference,
+      payment_transaction_reference as PaymentTransactionReference,
       @EndUserText.label: 'Tax Document No.'
-      taxdocumentno               as TaxDocumentNo,
+      tax_document_no               as TaxDocumentNo,
       @EndUserText.label: 'Related Document Ref.'
-      relateddocumentreference    as RelatedDocumentReference,
+      related_document_reference    as RelatedDocumentReference,
       @EndUserText.label: 'Currency'
-      currency                    as Currency,
+      currency                      as Currency,
       @EndUserText.label: 'Payment Term'
-      paymentterm                 as PaymentTerm,
+      payment_term                  as PaymentTerm,
       @EndUserText.label: 'Original Sales Document'
-      originalsalesdocument       as OriginalSalesDocument,
+      original_sales_document       as OriginalSalesDocument,
       @EndUserText.label: 'Order Reason'
-      orderreason                 as OrderReason,
+      order_reason                  as OrderReason,
       @EndUserText.label: 'Order Reason Text'
-      orderreasontext             as OrderReasonText,
+      order_reason_text             as OrderReasonText,
       @EndUserText.label: 'Customer PO'
-      customerpo                  as CustomerPO,
+      customer_po                   as CustomerPO,
 
       @EndUserText.label: 'Sales Order Number'
-      salesordernumber            as SalesOrderNumber,
+      sales_order_number            as SalesOrderNumber,
       @EndUserText.label: 'Status'
-      order_status                as OrderStatus,
+      order_status                  as OrderStatus,
 
       @Semantics.user.createdBy: true
       @EndUserText.label: 'Created By'
-      created_by                  as CreatedBy,
+      created_by                    as CreatedBy,
       @Semantics.systemDateTime.createdAt: true
       @EndUserText.label: 'Created At'
-      created_at                  as CreatedAt,
+      created_at                    as CreatedAt,
       @Semantics.user.lastChangedBy: true
       @EndUserText.label: 'Last Changed By'
-      last_changed_by             as LastChangedBy,
+      last_changed_by               as LastChangedBy,
       @Semantics.systemDateTime.lastChangedAt: true
       @EndUserText.label: 'Last Changed At'
-      last_changed_at             as LastChangedAt,
+      last_changed_at               as LastChangedAt,
       @Semantics.systemDateTime.localInstanceLastChangedAt: true
       @EndUserText.label: 'Local Last Changed At'
-      local_last_changed_at       as LocalLastChangedAt,
+      local_last_changed_at         as LocalLastChangedAt,
 
       _OrderPricingLog,
       _OrderMessageLog,

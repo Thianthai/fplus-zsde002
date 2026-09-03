@@ -12,26 +12,26 @@ define view entity ZI_ZSDE002_ITMPRC_LOG
     on $projection.OrderUUID = _OrderLog.OrderUUID
 {
       @EndUserText.label: 'Item Pricing Log UUID'
-  key item_pricing_uuid      as ItemPricingUUID,
+  key item_pricing_uuid        as ItemPricingUUID,
 
       @EndUserText.label: 'Item Log UUID'
-      item_uuid              as ItemUUID,
+      item_uuid                as ItemUUID,
       @EndUserText.label: 'Order Log UUID'
-      order_uuid             as OrderUUID,
+      order_uuid               as OrderUUID,
 
       @EndUserText.label: 'Condition Type'
-      conditiontype          as ConditionType,
+      condition_type           as ConditionType,
       @EndUserText.label: 'Condition Amount'
-      conditionamount        as ConditionAmount,
+      condition_amount         as ConditionAmount,
       @EndUserText.label: 'Condition Currency'
-      conditioncurrency      as ConditionCurrency,
+      condition_currency       as ConditionCurrency,
       @EndUserText.label: 'Pricing Unit'
-      conditionpricingunit   as ConditionPricingUnit,
+      condition_pricing_unit   as ConditionPricingUnit,
       @EndUserText.label: 'Unit of Measure'
-      conditionunitofmeasure as ConditionUnitOfMeasure,
+      condition_unit_of_measure as ConditionUnitOfMeasure,
 
       @Semantics.systemDateTime.localInstanceLastChangedAt: true
-      local_last_changed_at  as LocalLastChangedAt,
+      local_last_changed_at    as LocalLastChangedAt,
 
       _ItemLog,
       _OrderLog

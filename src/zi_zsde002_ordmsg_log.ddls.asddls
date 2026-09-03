@@ -17,7 +17,7 @@ define view entity ZI_ZSDE002_ORDMSG_LOG
       @EndUserText.label: 'Sequence'
       msg_seq               as MsgSeq,
       @EndUserText.label: 'Message Area'
-      area                  as MessageArea,
+      message_area          as MessageArea,
       @EndUserText.label: 'Status'
       status                as Status,
       @EndUserText.label: 'Message'
