@@ -36,9 +36,9 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
   METHOD if_oo_adt_classrun~main.
 
     purge_all( out ).
-*    create_test_data( out ).
-*    create_full_sample( out ).
-*    verify( out ).
+    create_test_data( out ).
+    create_full_sample( out ).
+    verify( out ).
 
   ENDMETHOD.
 
@@ -72,11 +72,11 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
 
   METHOD create_test_data.
 
-    DATA lt_order   TYPE STANDARD TABLE OF ztsd_e002_order.
-    DATA lt_item    TYPE STANDARD TABLE OF ztsd_e002_item.
-    DATA lt_ordprc  TYPE STANDARD TABLE OF ztsd_e002_ordprc.
-    DATA lt_itmprc  TYPE STANDARD TABLE OF ztsd_e002_itmprc.
-    DATA lt_ordmsg  TYPE STANDARD TABLE OF ztsd_e002_ordmsg.
+    DATA lt_order  TYPE STANDARD TABLE OF ztsd_e002_order.
+    DATA lt_item   TYPE STANDARD TABLE OF ztsd_e002_item.
+    DATA lt_ordprc TYPE STANDARD TABLE OF ztsd_e002_ordprc.
+    DATA lt_itmprc TYPE STANDARD TABLE OF ztsd_e002_itmprc.
+    DATA lt_ordmsg TYPE STANDARD TABLE OF ztsd_e002_ordmsg.
 
     DATA lv_now     TYPE timestampl.
     DATA lv_item_no TYPE n LENGTH 6.
@@ -93,25 +93,25 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
       APPEND VALUE #( order_uuid            = lv_order_uuid
                       request_id            = gc_request_id
                       request_body          = |\{ "sf_header_id_ref": "SPIKE-{ lv_o }", "sales_order_type": "ZOR" \}|
-                      sf_header_id_ref         = |SPIKE-{ lv_o }|
-                      sales_order_temp_id      = |TMP{ lv_o }|
-                      process_type           = '01'
-                      tran_type              = 'N'
-                      sales_order_type        = 'ZOR'
-                      sales_organization     = '1000'
-                      distribution_channel   = '10'
+                      sf_header_id_ref      = |SPIKE-{ lv_o }|
+                      sales_order_temp_id   = |TMP{ lv_o }|
+                      process_type          = '01'
+                      tran_type             = 'N'
+                      sales_order_type      = 'ZOR'
+                      sales_organization    = '1000'
+                      distribution_channel  = '10'
                       division              = '00'
-                      sold_to_party           = '0000001000'
-                      ship_to_party           = '0000001000'
-                      bill_to_party           = '0000001000'
+                      sold_to_party         = '0000001000'
+                      ship_to_party         = '0000001000'
+                      bill_to_party         = '0000001000'
                       payer                 = '0000001000'
-                      customer_reference     = |PO-SPIKE-{ lv_o }|
-                      document_date          = '2026-08-30'
-                      req_delivery_date       = '2026-09-05'
-                      shipping_conditions    = '01'
+                      customer_reference    = |PO-SPIKE-{ lv_o }|
+                      document_date         = '2026-08-30'
+                      req_delivery_date     = '2026-09-05'
+                      shipping_conditions   = '01'
                       currency              = 'THB'
-                      payment_term           = '0001'
-                      sales_order_number      = COND #( WHEN lv_o = 1 THEN '0000004711' ELSE space )
+                      payment_term          = '0001'
+                      sales_order_number    = COND #( WHEN lv_o = 1 THEN '0000004711' ELSE space )
                       order_status          = COND #( WHEN lv_o = 1 THEN 'S' ELSE 'E' )
                       created_by            = lv_user
                       created_at            = lv_now
@@ -121,24 +121,24 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
                     ) TO lt_order.
 
       " ---------- header pricing ----------
-      APPEND VALUE #( order_pricing_uuid     = new_uuid( )
-                      order_uuid             = lv_order_uuid
-                      condition_type          = 'ZDI2'
-                      condition_amount        = '100.00'
-                      condition_currency      = 'THB'
-                      condition_pricing_unit   = '1'
+      APPEND VALUE #( order_pricing_uuid        = new_uuid( )
+                      order_uuid                = lv_order_uuid
+                      condition_type            = 'ZDI2'
+                      condition_amount          = '100.00'
+                      condition_currency        = 'THB'
+                      condition_pricing_unit    = '1'
                       condition_unit_of_measure = 'EA'
-                      local_last_changed_at  = lv_now
+                      local_last_changed_at     = lv_now
                     ) TO lt_ordprc.
 
-      APPEND VALUE #( order_pricing_uuid     = new_uuid( )
-                      order_uuid             = lv_order_uuid
-                      condition_type          = 'ZDI3'
-                      condition_amount        = '50.00'
-                      condition_currency      = 'THB'
-                      condition_pricing_unit   = '1'
+      APPEND VALUE #( order_pricing_uuid        = new_uuid( )
+                      order_uuid                = lv_order_uuid
+                      condition_type            = 'ZDI3'
+                      condition_amount          = '50.00'
+                      condition_currency        = 'THB'
+                      condition_pricing_unit    = '1'
                       condition_unit_of_measure = 'EA'
-                      local_last_changed_at  = lv_now
+                      local_last_changed_at     = lv_now
                     ) TO lt_ordprc.
 
       " ---------- messages ----------
@@ -180,39 +180,39 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
         APPEND VALUE #( item_uuid             = lv_item_uuid
                         order_uuid            = lv_order_uuid
                         item                  = lv_item_no
-                        material_number        = |MAT-{ lv_o }{ lv_i }|
-                        customer_material      = |CMAT-{ lv_i }|
-                        item_category          = 'ZTAN'
-                        requested_quantity     = '10.000'
-                        sales_unit             = 'EA'
+                        material_number       = |MAT-{ lv_o }{ lv_i }|
+                        customer_material     = |CMAT-{ lv_i }|
+                        item_category         = 'ZTAN'
+                        requested_quantity    = '10.000'
+                        sales_unit            = 'EA'
                         plant                 = '1000'
-                        storage_location       = '0001'
-                        sales_text             = |Spike sales text for item { lv_i }|
-                        sf_item_id_ref           = |SFITEM-{ lv_o }{ lv_i }|
+                        storage_location      = '0001'
+                        sales_text            = |Spike sales text for item { lv_i }|
+                        sf_item_id_ref        = |SFITEM-{ lv_o }{ lv_i }|
                         local_last_changed_at = lv_now
                       ) TO lt_item.
 
         " ---------- item pricing : order_uuid filled directly, no RAP needed ----------
-        APPEND VALUE #( item_pricing_uuid      = new_uuid( )
-                        item_uuid              = lv_item_uuid
-                        order_uuid             = lv_order_uuid
-                        condition_type          = 'ZPI1'
-                        condition_amount        = '250.00'
-                        condition_currency      = 'THB'
-                        condition_pricing_unit   = '1'
+        APPEND VALUE #( item_pricing_uuid         = new_uuid( )
+                        item_uuid                 = lv_item_uuid
+                        order_uuid                = lv_order_uuid
+                        condition_type            = 'ZPI1'
+                        condition_amount          = '250.00'
+                        condition_currency        = 'THB'
+                        condition_pricing_unit    = '1'
                         condition_unit_of_measure = 'EA'
-                        local_last_changed_at  = lv_now
+                        local_last_changed_at     = lv_now
                       ) TO lt_itmprc.
 
-        APPEND VALUE #( item_pricing_uuid      = new_uuid( )
-                        item_uuid              = lv_item_uuid
-                        order_uuid             = lv_order_uuid
-                        condition_type          = 'ZDI1'
-                        condition_amount        = '25.00'
-                        condition_currency      = 'THB'
-                        condition_pricing_unit   = '1'
+        APPEND VALUE #( item_pricing_uuid         = new_uuid( )
+                        item_uuid                 = lv_item_uuid
+                        order_uuid                = lv_order_uuid
+                        condition_type            = 'ZDI1'
+                        condition_amount          = '25.00'
+                        condition_currency        = 'THB'
+                        condition_pricing_unit    = '1'
                         condition_unit_of_measure = 'EA'
-                        local_last_changed_at  = lv_now
+                        local_last_changed_at     = lv_now
                       ) TO lt_itmprc.
 
       ENDDO.
@@ -299,117 +299,118 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
     DATA(lv_item2_uuid) = new_uuid( ).
 
     " ---------- the raw JSON of this one order, exactly as SBPA sends it ----------
+    " ---------- the raw JSON of this one order, exactly as SBPA sends it ----------
     DATA(lv_body) = concat_lines_of(
       table = VALUE string_table(
         ( `{` )
-        ( `  "sf_header_id_ref": "SPIKE-FULL",` )
-        ( `  "sales_order_temp_id": "TMP9001",` )
-        ( `  "process_type": "01",` )
-        ( `  "tran_type": "N",` )
-        ( `  "sales_order_type": "ZOR",` )
-        ( `  "sales_organization": "1000",` )
-        ( `  "distribution_channel": "10",` )
-        ( `  "division": "00",` )
-        ( `  "sold_to_party": "0000001000",` )
-        ( `  "customer_branch": "00001",` )
-        ( `  "ship_to_party": "0000001001",` )
-        ( `  "bill_to_party": "0000001002",` )
-        ( `  "payer": "0000001003",` )
-        ( `  "stock_van": "0000009001",` )
-        ( `  "customer_reference": "PO-SPIKE-FULL-001",` )
-        ( `  "customer_reference_date": "2026-08-28",` )
-        ( `  "document_date": "2026-08-30",` )
-        ( `  "req_delivery_date": "2026-09-05",` )
-        ( `  "shipping_conditions": "01",` )
-        ( `  "payment_transaction_reference": "TXN-2026-08-30-0001",` )
-        ( `  "tax_document_no": "TAX0012345",` )
-        ( `  "related_document_reference": "REL0098765",` )
-        ( `  "currency": "THB",` )
-        ( `  "payment_term": "0001",` )
-        ( `  "original_sales_document": "0000001234",` )
-        ( `  "order_reason": "01",` )
-        ( `  "order_reason_text": "Customer requested replacement for damaged goods",` )
-        ( `  "customer_po": "CUSTPO-778899",` )
-        ( `  "pricing": [` )
+        ( `  "SfHeaderIdRef": "SPIKE-FULL",` )
+        ( `  "SalesOrderTempId": "TMP9001",` )
+        ( `  "ProcessType": "01",` )
+        ( `  "TranType": "N",` )
+        ( `  "SalesOrderType": "ZOR",` )
+        ( `  "SalesOrganization": "1000",` )
+        ( `  "DistributionChannel": "10",` )
+        ( `  "Division": "00",` )
+        ( `  "SoldToParty": "0000001000",` )
+        ( `  "CustomerBranch": "00001",` )
+        ( `  "ShipToParty": "0000001001",` )
+        ( `  "BillToParty": "0000001002",` )
+        ( `  "Payer": "0000001003",` )
+        ( `  "StockVan": "0000009001",` )
+        ( `  "CustomerReference": "PO-SPIKE-FULL-001",` )
+        ( `  "CustomerReferenceDate": "2026-08-28",` )
+        ( `  "DocumentDate": "2026-08-30",` )
+        ( `  "ReqDeliveryDate": "2026-09-05",` )
+        ( `  "ShippingConditions": "01",` )
+        ( `  "PaymentTransactionReference": "TXN-2026-08-30-0001",` )
+        ( `  "TaxDocumentNo": "TAX0012345",` )
+        ( `  "RelatedDocumentReference": "REL0098765",` )
+        ( `  "Currency": "THB",` )
+        ( `  "PaymentTerm": "0001",` )
+        ( `  "OriginalSalesDocument": "0000001234",` )
+        ( `  "OrderReason": "01",` )
+        ( `  "OrderReasonText": "Customer requested replacement for damaged goods",` )
+        ( `  "CustomerPo": "CUSTPO-778899",` )
+        ( `  "Pricings": [` )
         ( `    {` )
-        ( `      "condition_type": "ZDI2",` )
-        ( `      "condition_amount": "100.00",` )
-        ( `      "condition_currency": "THB",` )
-        ( `      "condition_pricing_unit": "1",` )
-        ( `      "condition_unit_of_measure": "EA"` )
+        ( `      "ConditionType": "ZDI2",` )
+        ( `      "ConditionAmount": "100.00",` )
+        ( `      "ConditionCurrency": "THB",` )
+        ( `      "ConditionPricingUnit": "1",` )
+        ( `      "ConditionUnitOfMeasure": "EA"` )
         ( `    },` )
         ( `    {` )
-        ( `      "condition_type": "ZDI3",` )
-        ( `      "condition_amount": "50.00",` )
-        ( `      "condition_currency": "THB",` )
-        ( `      "condition_pricing_unit": "1",` )
-        ( `      "condition_unit_of_measure": "EA"` )
+        ( `      "ConditionType": "ZDI3",` )
+        ( `      "ConditionAmount": "50.00",` )
+        ( `      "ConditionCurrency": "THB",` )
+        ( `      "ConditionPricingUnit": "1",` )
+        ( `      "ConditionUnitOfMeasure": "EA"` )
         ( `    }` )
         ( `  ],` )
-        ( `  "item": [` )
+        ( `  "Items": [` )
         ( `    {` )
-        ( `      "item": "000010",` )
-        ( `      "material_number": "MAT-FULL-01",` )
-        ( `      "customer_material": "CMAT-01",` )
-        ( `      "item_category": "ZTAN",` )
-        ( `      "requested_quantity": "10.000",` )
-        ( `      "sales_unit": "EA",` )
-        ( `      "plant": "1000",` )
-        ( `      "storage_location": "0001",` )
-        ( `      "mat_tax_class": "1",` )
-        ( `      "sales_text": "Full sample sales text for item 000010",` )
-        ( `      "unit_text": "Carton of 12",` )
-        ( `      "promotion_id_text": "PROMO-2026-Q3",` )
-        ( `      "batch": "BATCH00001",` )
-        ( `      "route": "R00001",` )
-        ( `      "sf_item_id_ref": "SFITEM-FULL-01",` )
-        ( `      "pricing": [` )
+        ( `      "Item": "000010",` )
+        ( `      "MaterialNumber": "MAT-FULL-01",` )
+        ( `      "CustomerMaterial": "CMAT-01",` )
+        ( `      "ItemCategory": "ZTAN",` )
+        ( `      "RequestedQuantity": "10.000",` )
+        ( `      "SalesUnit": "EA",` )
+        ( `      "Plant": "1000",` )
+        ( `      "StorageLocation": "0001",` )
+        ( `      "MatTaxClass": "1",` )
+        ( `      "SalesText": "Full sample sales text for item 000010",` )
+        ( `      "UnitText": "Carton of 12",` )
+        ( `      "PromotionIdText": "PROMO-2026-Q3",` )
+        ( `      "Batch": "BATCH00001",` )
+        ( `      "Route": "R00001",` )
+        ( `      "SfItemIdRef": "SFITEM-FULL-01",` )
+        ( `      "Pricings": [` )
         ( `        {` )
-        ( `          "condition_type": "ZPI1",` )
-        ( `          "condition_amount": "250.00",` )
-        ( `          "condition_currency": "THB",` )
-        ( `          "condition_pricing_unit": "1",` )
-        ( `          "condition_unit_of_measure": "EA"` )
+        ( `          "ConditionType": "ZPI1",` )
+        ( `          "ConditionAmount": "250.00",` )
+        ( `          "ConditionCurrency": "THB",` )
+        ( `          "ConditionPricingUnit": "1",` )
+        ( `          "ConditionUnitOfMeasure": "EA"` )
         ( `        },` )
         ( `        {` )
-        ( `          "condition_type": "ZDI1",` )
-        ( `          "condition_amount": "25.00",` )
-        ( `          "condition_currency": "THB",` )
-        ( `          "condition_pricing_unit": "1",` )
-        ( `          "condition_unit_of_measure": "EA"` )
+        ( `          "ConditionType": "ZDI1",` )
+        ( `          "ConditionAmount": "25.00",` )
+        ( `          "ConditionCurrency": "THB",` )
+        ( `          "ConditionPricingUnit": "1",` )
+        ( `          "ConditionUnitOfMeasure": "EA"` )
         ( `        }` )
         ( `      ]` )
         ( `    },` )
         ( `    {` )
-        ( `      "item": "000020",` )
-        ( `      "material_number": "MAT-FULL-02",` )
-        ( `      "customer_material": "CMAT-02",` )
-        ( `      "item_category": "ZTAN",` )
-        ( `      "requested_quantity": "5.000",` )
-        ( `      "sales_unit": "EA",` )
-        ( `      "plant": "1000",` )
-        ( `      "storage_location": "0002",` )
-        ( `      "mat_tax_class": "1",` )
-        ( `      "sales_text": "Full sample sales text for item 000020",` )
-        ( `      "unit_text": "Box of 6",` )
-        ( `      "promotion_id_text": "PROMO-2026-Q3",` )
-        ( `      "batch": "BATCH00002",` )
-        ( `      "route": "R00002",` )
-        ( `      "sf_item_id_ref": "SFITEM-FULL-02",` )
-        ( `      "pricing": [` )
+        ( `      "Item": "000020",` )
+        ( `      "MaterialNumber": "MAT-FULL-02",` )
+        ( `      "CustomerMaterial": "CMAT-02",` )
+        ( `      "ItemCategory": "ZTAN",` )
+        ( `      "RequestedQuantity": "5.000",` )
+        ( `      "SalesUnit": "EA",` )
+        ( `      "Plant": "1000",` )
+        ( `      "StorageLocation": "0002",` )
+        ( `      "MatTaxClass": "1",` )
+        ( `      "SalesText": "Full sample sales text for item 000020",` )
+        ( `      "UnitText": "Box of 6",` )
+        ( `      "PromotionIdText": "PROMO-2026-Q3",` )
+        ( `      "Batch": "BATCH00002",` )
+        ( `      "Route": "R00002",` )
+        ( `      "SfItemIdRef": "SFITEM-FULL-02",` )
+        ( `      "Pricings": [` )
         ( `        {` )
-        ( `          "condition_type": "ZPI1",` )
-        ( `          "condition_amount": "480.00",` )
-        ( `          "condition_currency": "THB",` )
-        ( `          "condition_pricing_unit": "1",` )
-        ( `          "condition_unit_of_measure": "EA"` )
+        ( `          "ConditionType": "ZPI1",` )
+        ( `          "ConditionAmount": "480.00",` )
+        ( `          "ConditionCurrency": "THB",` )
+        ( `          "ConditionPricingUnit": "1",` )
+        ( `          "ConditionUnitOfMeasure": "EA"` )
         ( `        },` )
         ( `        {` )
-        ( `          "condition_type": "ZDI1",` )
-        ( `          "condition_amount": "30.00",` )
-        ( `          "condition_currency": "THB",` )
-        ( `          "condition_pricing_unit": "1",` )
-        ( `          "condition_unit_of_measure": "EA"` )
+        ( `          "ConditionType": "ZDI1",` )
+        ( `          "ConditionAmount": "30.00",` )
+        ( `          "ConditionCurrency": "THB",` )
+        ( `          "ConditionPricingUnit": "1",` )
+        ( `          "ConditionUnitOfMeasure": "EA"` )
         ( `        }` )
         ( `      ]` )
         ( `    }` )
@@ -418,65 +419,65 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
       sep = |\n| ).
 
     " ---------- header : every column filled ----------
-    APPEND VALUE #( order_uuid                  = lv_order_uuid
-                    request_id                  = gc_request_id
-                    request_body                = lv_body
-                    sf_header_id_ref               = 'SPIKE-FULL'
-                    sales_order_temp_id            = 'TMP9001'
-                    process_type                 = '01'
-                    tran_type                    = 'N'
+    APPEND VALUE #( order_uuid                    = lv_order_uuid
+                    request_id                    = gc_request_id
+                    request_body                  = lv_body
+                    sf_header_id_ref              = 'SPIKE-FULL'
+                    sales_order_temp_id           = 'TMP9001'
+                    process_type                  = '01'
+                    tran_type                     = 'N'
                     sales_order_type              = 'ZOR'
-                    sales_organization           = '1000'
-                    distribution_channel         = '10'
-                    division                    = '00'
+                    sales_organization            = '1000'
+                    distribution_channel          = '10'
+                    division                      = '00'
                     sold_to_party                 = '0000001000'
-                    customer_branch              = '00001'
+                    customer_branch               = '00001'
                     ship_to_party                 = '0000001001'
                     bill_to_party                 = '0000001002'
-                    payer                       = '0000001003'
-                    stock_van                    = '0000009001'
-                    customer_reference           = 'PO-SPIKE-FULL-001'
+                    payer                         = '0000001003'
+                    stock_van                     = '0000009001'
+                    customer_reference            = 'PO-SPIKE-FULL-001'
                     customer_reference_date       = '2026-08-28'
-                    document_date                = '2026-08-30'
+                    document_date                 = '2026-08-30'
                     req_delivery_date             = '2026-09-05'
-                    shipping_conditions          = '01'
+                    shipping_conditions           = '01'
                     payment_transaction_reference = 'TXN-2026-08-30-0001'
                     tax_document_no               = 'TAX0012345'
                     related_document_reference    = 'REL0098765'
-                    currency                    = 'THB'
-                    payment_term                 = '0001'
+                    currency                      = 'THB'
+                    payment_term                  = '0001'
                     original_sales_document       = '0000001234'
-                    order_reason                 = '01'
+                    order_reason                  = '01'
                     order_reason_text             = 'Customer requested replacement for damaged goods'
-                    customer_po                  = 'CUSTPO-778899'
+                    customer_po                   = 'CUSTPO-778899'
                     sales_order_number            = '0000004712'
-                    order_status                = 'W'
-                    created_by                  = lv_user
-                    created_at                  = lv_now
-                    last_changed_by             = lv_user
-                    last_changed_at             = lv_now
-                    local_last_changed_at       = lv_now
+                    order_status                  = 'W'
+                    created_by                    = lv_user
+                    created_at                    = lv_now
+                    last_changed_by               = lv_user
+                    last_changed_at               = lv_now
+                    local_last_changed_at         = lv_now
                   ) TO lt_order.
 
     " ---------- header pricing ----------
-    APPEND VALUE #( order_pricing_uuid     = new_uuid( )
-                    order_uuid             = lv_order_uuid
-                    condition_type          = 'ZDI2'
-                    condition_amount        = '100.00'
-                    condition_currency      = 'THB'
-                    condition_pricing_unit   = '1'
+    APPEND VALUE #( order_pricing_uuid        = new_uuid( )
+                    order_uuid                = lv_order_uuid
+                    condition_type            = 'ZDI2'
+                    condition_amount          = '100.00'
+                    condition_currency        = 'THB'
+                    condition_pricing_unit    = '1'
                     condition_unit_of_measure = 'EA'
-                    local_last_changed_at  = lv_now
+                    local_last_changed_at     = lv_now
                   ) TO lt_ordprc.
 
-    APPEND VALUE #( order_pricing_uuid     = new_uuid( )
-                    order_uuid             = lv_order_uuid
-                    condition_type          = 'ZDI3'
-                    condition_amount        = '50.00'
-                    condition_currency      = 'THB'
-                    condition_pricing_unit   = '1'
+    APPEND VALUE #( order_pricing_uuid        = new_uuid( )
+                    order_uuid                = lv_order_uuid
+                    condition_type            = 'ZDI3'
+                    condition_amount          = '50.00'
+                    condition_currency        = 'THB'
+                    condition_pricing_unit    = '1'
                     condition_unit_of_measure = 'EA'
-                    local_last_changed_at  = lv_now
+                    local_last_changed_at     = lv_now
                   ) TO lt_ordprc.
 
     " ---------- messages ----------
@@ -511,86 +512,86 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
     APPEND VALUE #( item_uuid             = lv_item1_uuid
                     order_uuid            = lv_order_uuid
                     item                  = '000010'
-                    material_number        = 'MAT-FULL-01'
-                    customer_material      = 'CMAT-01'
-                    item_category          = 'ZTAN'
-                    requested_quantity     = '10.000'
-                    sales_unit             = 'EA'
+                    material_number       = 'MAT-FULL-01'
+                    customer_material     = 'CMAT-01'
+                    item_category         = 'ZTAN'
+                    requested_quantity    = '10.000'
+                    sales_unit            = 'EA'
                     plant                 = '1000'
-                    storage_location       = '0001'
-                    mat_tax_class           = '1'
-                    sales_text             = 'Full sample sales text for item 000010'
-                    unit_text              = 'Carton of 12'
-                    promotion_id_text       = 'PROMO-2026-Q3'
+                    storage_location      = '0001'
+                    mat_tax_class         = '1'
+                    sales_text            = 'Full sample sales text for item 000010'
+                    unit_text             = 'Carton of 12'
+                    promotion_id_text     = 'PROMO-2026-Q3'
                     batch                 = 'BATCH00001'
                     route                 = 'R00001'
-                    sf_item_id_ref           = 'SFITEM-FULL-01'
+                    sf_item_id_ref        = 'SFITEM-FULL-01'
                     local_last_changed_at = lv_now
                   ) TO lt_item.
 
-    APPEND VALUE #( item_pricing_uuid      = new_uuid( )
-                    item_uuid              = lv_item1_uuid
-                    order_uuid             = lv_order_uuid
-                    condition_type          = 'ZPI1'
-                    condition_amount        = '250.00'
-                    condition_currency      = 'THB'
-                    condition_pricing_unit   = '1'
+    APPEND VALUE #( item_pricing_uuid         = new_uuid( )
+                    item_uuid                 = lv_item1_uuid
+                    order_uuid                = lv_order_uuid
+                    condition_type            = 'ZPI1'
+                    condition_amount          = '250.00'
+                    condition_currency        = 'THB'
+                    condition_pricing_unit    = '1'
                     condition_unit_of_measure = 'EA'
-                    local_last_changed_at  = lv_now
+                    local_last_changed_at     = lv_now
                   ) TO lt_itmprc.
 
-    APPEND VALUE #( item_pricing_uuid      = new_uuid( )
-                    item_uuid              = lv_item1_uuid
-                    order_uuid             = lv_order_uuid
-                    condition_type          = 'ZDI1'
-                    condition_amount        = '25.00'
-                    condition_currency      = 'THB'
-                    condition_pricing_unit   = '1'
+    APPEND VALUE #( item_pricing_uuid         = new_uuid( )
+                    item_uuid                 = lv_item1_uuid
+                    order_uuid                = lv_order_uuid
+                    condition_type            = 'ZDI1'
+                    condition_amount          = '25.00'
+                    condition_currency        = 'THB'
+                    condition_pricing_unit    = '1'
                     condition_unit_of_measure = 'EA'
-                    local_last_changed_at  = lv_now
+                    local_last_changed_at     = lv_now
                   ) TO lt_itmprc.
 
     " ---------- item 000020 ----------
     APPEND VALUE #( item_uuid             = lv_item2_uuid
                     order_uuid            = lv_order_uuid
                     item                  = '000020'
-                    material_number        = 'MAT-FULL-02'
-                    customer_material      = 'CMAT-02'
-                    item_category          = 'ZTAN'
-                    requested_quantity     = '5.000'
-                    sales_unit             = 'EA'
+                    material_number       = 'MAT-FULL-02'
+                    customer_material     = 'CMAT-02'
+                    item_category         = 'ZTAN'
+                    requested_quantity    = '5.000'
+                    sales_unit            = 'EA'
                     plant                 = '1000'
-                    storage_location       = '0002'
-                    mat_tax_class           = '1'
-                    sales_text             = 'Full sample sales text for item 000020'
-                    unit_text              = 'Box of 6'
-                    promotion_id_text       = 'PROMO-2026-Q3'
+                    storage_location      = '0002'
+                    mat_tax_class         = '1'
+                    sales_text            = 'Full sample sales text for item 000020'
+                    unit_text             = 'Box of 6'
+                    promotion_id_text     = 'PROMO-2026-Q3'
                     batch                 = 'BATCH00002'
                     route                 = 'R00002'
-                    sf_item_id_ref           = 'SFITEM-FULL-02'
+                    sf_item_id_ref        = 'SFITEM-FULL-02'
                     local_last_changed_at = lv_now
                   ) TO lt_item.
 
-    APPEND VALUE #( item_pricing_uuid      = new_uuid( )
-                    item_uuid              = lv_item2_uuid
-                    order_uuid             = lv_order_uuid
-                    condition_type          = 'ZPI1'
-                    condition_amount        = '480.00'
-                    condition_currency      = 'THB'
-                    condition_pricing_unit   = '1'
+    APPEND VALUE #( item_pricing_uuid         = new_uuid( )
+                    item_uuid                 = lv_item2_uuid
+                    order_uuid                = lv_order_uuid
+                    condition_type            = 'ZPI1'
+                    condition_amount          = '480.00'
+                    condition_currency        = 'THB'
+                    condition_pricing_unit    = '1'
                     condition_unit_of_measure = 'EA'
-                    local_last_changed_at  = lv_now
+                    local_last_changed_at     = lv_now
                   ) TO lt_itmprc.
 
-    APPEND VALUE #( item_pricing_uuid      = new_uuid( )
-                    item_uuid              = lv_item2_uuid
-                    order_uuid             = lv_order_uuid
-                    condition_type          = 'ZDI1'
-                    condition_amount        = '30.00'
-                    condition_currency      = 'THB'
-                    condition_pricing_unit   = '1'
+    APPEND VALUE #( item_pricing_uuid         = new_uuid( )
+                    item_uuid                 = lv_item2_uuid
+                    order_uuid                = lv_order_uuid
+                    condition_type            = 'ZDI1'
+                    condition_amount          = '30.00'
+                    condition_currency        = 'THB'
+                    condition_pricing_unit    = '1'
                     condition_unit_of_measure = 'EA'
-                    local_last_changed_at  = lv_now
+                    local_last_changed_at     = lv_now
                   ) TO lt_itmprc.
 
     INSERT ztsd_e002_order  FROM TABLE @lt_order.

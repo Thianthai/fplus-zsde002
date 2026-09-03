@@ -229,9 +229,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       lt_order_pricings = CORRESPONDING #( <lfs_order>-pricings ).
 
       normalize_order( EXPORTING iv_request_id = CONV #( ls_request-request_id )
-                       CHANGING  cs_order   = ls_order
-                                 ct_pricing = lt_order_pricings
-                                 cs_result  = rs_result ).
+                       CHANGING  cs_order      = ls_order
+                                 ct_pricing    = lt_order_pricings
+                                 cs_result     = rs_result ).
 
       LOOP AT <lfs_order>-items ASSIGNING FIELD-SYMBOL(<lfs_item>).
         CLEAR: ls_item, lt_item_pricing[].
@@ -272,9 +272,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                  it_item          = lt_item
                  it_item_pricing  = lt_item_pricings ) = abap_false.
 
-          APPEND VALUE #( msgno         = '000'
-                          msgtx         = message_text( iv_msgno = '000'
-                                                        iv_v1    = `Database insert failed` )
+          APPEND VALUE #( msgno            = '000'
+                          msgtx            = message_text( iv_msgno = '000'
+                                                           iv_v1    = `Database insert failed` )
                           sf_header_id_ref = ls_order-sf_header_id_ref
                         ) TO lt_error.
         ENDIF.
@@ -285,9 +285,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         IF post( is_order = ls_order
                  it_item  = lt_item ) = abap_false.
 
-          APPEND VALUE #( msgno         = '000'
-                          msgtx         = message_text( iv_msgno = '000'
-                                                        iv_v1    = `Sales order create failed` )
+          APPEND VALUE #( msgno            = '000'
+                          msgtx            = message_text( iv_msgno = '000'
+                                                           iv_v1    = `Sales order create failed` )
                           sf_header_id_ref = ls_order-sf_header_id_ref
                         ) TO lt_error.
         ENDIF.
@@ -383,8 +383,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     TRY.
         cs_order-order_uuid = cl_system_uuid=>create_uuid_x16_static( ).
       CATCH cx_uuid_error INTO DATA(lo_uuid_error).
-        APPEND VALUE #( msgno         = '000'
-                        msgtx         = lo_uuid_error->get_longtext( )
+        APPEND VALUE #( msgno            = '000'
+                        msgtx            = lo_uuid_error->get_longtext( )
                         sf_header_id_ref = cs_order-sf_header_id_ref
                       ) TO cs_result-errors.
         RETURN.
@@ -397,8 +397,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     cs_order-sold_to_party = zcl_zsde002_validator=>to_internal_customer( cs_order-sold_to_party ).
     cs_order-ship_to_party = zcl_zsde002_validator=>to_internal_customer( cs_order-ship_to_party ).
     cs_order-bill_to_party = zcl_zsde002_validator=>to_internal_customer( cs_order-bill_to_party ).
-    cs_order-payer       = zcl_zsde002_validator=>to_internal_customer( cs_order-payer ).
-    cs_order-stock_van    = zcl_zsde002_validator=>to_internal_customer( cs_order-stock_van ).
+    cs_order-payer         = zcl_zsde002_validator=>to_internal_customer( cs_order-payer ).
+    cs_order-stock_van     = zcl_zsde002_validator=>to_internal_customer( cs_order-stock_van ).
 
     " Administrative Data
     DATA(lv_user) = cl_abap_context_info=>get_user_technical_name( ).
@@ -417,8 +417,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       TRY.
           <lfs_pricing>-order_pricing_uuid = cl_system_uuid=>create_uuid_x16_static( ).
         CATCH cx_uuid_error INTO lo_uuid_error.
-          APPEND VALUE #( msgno         = '000'
-                          msgtx         = lo_uuid_error->get_longtext( )
+          APPEND VALUE #( msgno            = '000'
+                          msgtx            = lo_uuid_error->get_longtext( )
                           sf_header_id_ref = cs_order-sf_header_id_ref
                         ) TO cs_result-errors.
           RETURN.
@@ -445,8 +445,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     TRY.
         cs_item-item_uuid = cl_system_uuid=>create_uuid_x16_static( ).
       CATCH cx_uuid_error INTO DATA(lo_uuid_error).
-        APPEND VALUE #( msgno         = '000'
-                        msgtx         = lo_uuid_error->get_longtext( )
+        APPEND VALUE #( msgno            = '000'
+                        msgtx            = lo_uuid_error->get_longtext( )
                         sf_header_id_ref = is_order-sf_header_id_ref
                         sf_item_id_ref   = cs_item-sf_item_id_ref
                       ) TO cs_result-errors.
@@ -469,8 +469,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       TRY.
           <lfs_pricing>-item_pricing_uuid = cl_system_uuid=>create_uuid_x16_static( ).
         CATCH cx_uuid_error INTO lo_uuid_error.
-          APPEND VALUE #( msgno         = '000'
-                          msgtx         = lo_uuid_error->get_longtext( )
+          APPEND VALUE #( msgno            = '000'
+                          msgtx            = lo_uuid_error->get_longtext( )
                           sf_header_id_ref = is_order-sf_header_id_ref
                           sf_item_id_ref   = cs_item-sf_item_id_ref
                         ) TO cs_result-errors.
@@ -495,9 +495,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
   METHOD validate_order.
 
     " 1. Validate Mandatory --------------------------------------------
-    APPEND LINES OF to_errors( it_finding       = zcl_zsde002_validator=>check_order_mandatory(
-                                                    EXPORTING is_order = is_order
-                                                              is_param = gs_param )
+    APPEND LINES OF to_errors( it_finding          = zcl_zsde002_validator=>check_order_mandatory(
+                                                       EXPORTING is_order = is_order
+                                                                 is_param = gs_param )
                                iv_sf_header_id_ref = is_order-sf_header_id_ref
                              ) TO rt_error.
 
@@ -512,10 +512,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
   METHOD validate_item.
 
     " 1. Validate Mandatory --------------------------------------------
-    APPEND LINES OF to_errors( it_finding       = zcl_zsde002_validator=>check_item_mandatory(
-                                                    EXPORTING is_order = is_order
-                                                              is_item  = is_item
-                                                              is_param = gs_param )
+    APPEND LINES OF to_errors( it_finding          = zcl_zsde002_validator=>check_item_mandatory(
+                                                       EXPORTING is_order = is_order
+                                                                 is_item  = is_item
+                                                                 is_param = gs_param )
                                iv_sf_header_id_ref = is_order-sf_header_id_ref
                                iv_sf_item_id_ref   = is_item-sf_item_id_ref
                              ) TO rt_error.
@@ -550,7 +550,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     " Sales Area
     IF  is_order-sales_organization   IS NOT INITIAL
     AND is_order-distribution_channel IS NOT INITIAL
-    AND is_order-division            IS NOT INITIAL.
+    AND is_order-division             IS NOT INITIAL.
 
       ls_sales_area-sales_organization   = is_order-sales_organization.
       ls_sales_area-distribution_channel = is_order-distribution_channel.
@@ -562,13 +562,13 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                     ) INTO TABLE lt_sales_area.
 
       IF go_master_data->find_unknown_sales_area( lt_sales_area ) IS NOT INITIAL.
-        APPEND VALUE #( msgno         = '200'
-                        msgtx         = message_text( iv_msgno = '200'
-                                                      iv_v1    = |{ is_order-sales_organization }|
-                                                      iv_v2    = |{ is_order-distribution_channel }|
-                                                      iv_v3    = |{ is_order-division }| )
+        APPEND VALUE #( msgno            = '200'
+                        msgtx            = message_text( iv_msgno = '200'
+                                                         iv_v1    = |{ is_order-sales_organization }|
+                                                         iv_v2    = |{ is_order-distribution_channel }|
+                                                         iv_v3    = |{ is_order-division }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
-                        field         = `SalesOrganization, DistributionChannel, Division`
+                        field            = `SalesOrganization, DistributionChannel, Division`
                       ) TO rt_error.
       ENDIF.
     ENDIF.
@@ -576,11 +576,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     " Customer Sales Area
     IF  is_order-sales_organization   IS NOT INITIAL
     AND is_order-distribution_channel IS NOT INITIAL
-    AND is_order-division            IS NOT INITIAL.
+    AND is_order-division             IS NOT INITIAL.
 
       ls_customer_sales_area-sales_organization   = is_order-sales_organization.
       ls_customer_sales_area-distribution_channel = is_order-distribution_channel.
-      ls_customer_sales_area-division            = is_order-division.
+      ls_customer_sales_area-division             = is_order-division.
 
        " Sold-to Party
       IF is_order-sold_to_party IS NOT INITIAL.
@@ -593,14 +593,14 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) INTO TABLE lt_cust_sales_area.
 
         IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
-          APPEND VALUE #( msgno         = '201'
-                          msgtx         = message_text( iv_msgno = '201'
-                                                        iv_v1    = |{ is_order-sales_organization }|
-                                                        iv_v2    = |{ is_order-distribution_channel }|
-                                                        iv_v3    = |{ is_order-division }|
-                                                        iv_v4    = |{ is_order-sold_to_party }| )
+          APPEND VALUE #( msgno            = '201'
+                          msgtx            = message_text( iv_msgno = '201'
+                                                           iv_v1    = |{ is_order-sales_organization }|
+                                                           iv_v2    = |{ is_order-distribution_channel }|
+                                                           iv_v3    = |{ is_order-division }|
+                                                           iv_v4    = |{ is_order-sold_to_party }| )
                           sf_header_id_ref = is_order-sf_header_id_ref
-                          field         = zcl_zsde002_json=>to_json_name( 'sold_to_party' )
+                          field            = zcl_zsde002_json=>to_json_name( 'sold_to_party' )
                         ) TO rt_error.
         ENDIF.
       ENDIF.
@@ -616,14 +616,14 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) INTO TABLE lt_cust_sales_area.
 
         IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
-          APPEND VALUE #( msgno         = '201'
-                          msgtx         = message_text( iv_msgno = '201'
-                                                        iv_v1    = |{ is_order-sales_organization }|
-                                                        iv_v2    = |{ is_order-distribution_channel }|
-                                                        iv_v3    = |{ is_order-division }|
-                                                        iv_v4    = |{ is_order-ship_to_party }| )
+          APPEND VALUE #( msgno            = '201'
+                          msgtx            = message_text( iv_msgno = '201'
+                                                           iv_v1    = |{ is_order-sales_organization }|
+                                                           iv_v2    = |{ is_order-distribution_channel }|
+                                                           iv_v3    = |{ is_order-division }|
+                                                           iv_v4    = |{ is_order-ship_to_party }| )
                           sf_header_id_ref = is_order-sf_header_id_ref
-                          field         = zcl_zsde002_json=>to_json_name( 'ship_to_party' )
+                          field            = zcl_zsde002_json=>to_json_name( 'ship_to_party' )
                         ) TO rt_error.
         ENDIF.
       ENDIF.
@@ -639,14 +639,14 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) INTO TABLE lt_cust_sales_area.
 
         IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
-          APPEND VALUE #( msgno         = '201'
-                          msgtx         = message_text( iv_msgno = '201'
-                                                        iv_v1    = |{ is_order-sales_organization }|
-                                                        iv_v2    = |{ is_order-distribution_channel }|
-                                                        iv_v3    = |{ is_order-division }|
-                                                        iv_v4    = |{ is_order-bill_to_party }| )
+          APPEND VALUE #( msgno            = '201'
+                          msgtx            = message_text( iv_msgno = '201'
+                                                           iv_v1    = |{ is_order-sales_organization }|
+                                                           iv_v2    = |{ is_order-distribution_channel }|
+                                                           iv_v3    = |{ is_order-division }|
+                                                           iv_v4    = |{ is_order-bill_to_party }| )
                           sf_header_id_ref = is_order-sf_header_id_ref
-                          field         = zcl_zsde002_json=>to_json_name( 'bill_to_party' )
+                          field            = zcl_zsde002_json=>to_json_name( 'bill_to_party' )
                         ) TO rt_error.
         ENDIF.
       ENDIF.
@@ -662,14 +662,14 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) INTO TABLE lt_cust_sales_area.
 
         IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
-          APPEND VALUE #( msgno         = '201'
-                          msgtx         = message_text( iv_msgno = '201'
-                                                        iv_v1    = |{ is_order-sales_organization }|
-                                                        iv_v2    = |{ is_order-distribution_channel }|
-                                                        iv_v3    = |{ is_order-division }|
-                                                        iv_v4    = |{ is_order-payer }| )
+          APPEND VALUE #( msgno            = '201'
+                          msgtx            = message_text( iv_msgno = '201'
+                                                           iv_v1    = |{ is_order-sales_organization }|
+                                                           iv_v2    = |{ is_order-distribution_channel }|
+                                                           iv_v3    = |{ is_order-division }|
+                                                           iv_v4    = |{ is_order-payer }| )
                           sf_header_id_ref = is_order-sf_header_id_ref
-                          field         = zcl_zsde002_json=>to_json_name( 'payer' )
+                          field            = zcl_zsde002_json=>to_json_name( 'payer' )
                         ) TO rt_error.
         ENDIF.
       ENDIF.
@@ -685,14 +685,14 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) INTO TABLE lt_cust_sales_area.
 
         IF go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ) IS NOT INITIAL.
-          APPEND VALUE #( msgno         = '201'
-                          msgtx         = message_text( iv_msgno = '201'
-                                                        iv_v1    = |{ is_order-sales_organization }|
-                                                        iv_v2    = |{ is_order-distribution_channel }|
-                                                        iv_v3    = |{ is_order-division }|
-                                                        iv_v4    = |{ is_order-stock_van }| )
+          APPEND VALUE #( msgno            = '201'
+                          msgtx            = message_text( iv_msgno = '201'
+                                                           iv_v1    = |{ is_order-sales_organization }|
+                                                           iv_v2    = |{ is_order-distribution_channel }|
+                                                           iv_v3    = |{ is_order-division }|
+                                                           iv_v4    = |{ is_order-stock_van }| )
                           sf_header_id_ref = is_order-sf_header_id_ref
-                          field         = zcl_zsde002_json=>to_json_name( 'stock_van' )
+                          field            = zcl_zsde002_json=>to_json_name( 'stock_van' )
                         ) TO rt_error.
         ENDIF.
       ENDIF.
@@ -704,11 +704,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       INSERT lv_sales_document_type INTO TABLE lt_sales_document_type.
 
       IF go_master_data->find_unknown_sales_doc_type( lt_sales_document_type ) IS NOT INITIAL.
-        APPEND VALUE #( msgno         = '202'
-                        msgtx         = message_text( iv_msgno = '202'
-                                                      iv_v1    = |{ is_order-sales_order_type }| )
+        APPEND VALUE #( msgno            = '202'
+                        msgtx            = message_text( iv_msgno = '202'
+                                                         iv_v1    = |{ is_order-sales_order_type }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
-                        field         = zcl_zsde002_json=>to_json_name( 'sales_order_type' )
+                        field            = zcl_zsde002_json=>to_json_name( 'sales_order_type' )
                       ) TO rt_error.
       ENDIF.
     ENDIF.
@@ -719,11 +719,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       INSERT lv_payment_terms INTO TABLE lt_payment_terms.
 
       IF go_master_data->find_unknown_payment_terms( lt_payment_terms ) IS NOT INITIAL.
-        APPEND VALUE #( msgno         = '203'
-                        msgtx         = message_text( iv_msgno = '203'
-                                                      iv_v1    = |{ is_order-payment_term }| )
+        APPEND VALUE #( msgno            = '203'
+                        msgtx            = message_text( iv_msgno = '203'
+                                                         iv_v1    = |{ is_order-payment_term }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
-                        field         = zcl_zsde002_json=>to_json_name( 'payment_term' )
+                        field            = zcl_zsde002_json=>to_json_name( 'payment_term' )
                       ) TO rt_error.
       ENDIF.
     ENDIF.
@@ -734,11 +734,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       INSERT lv_currency INTO TABLE lt_currency.
 
       IF go_master_data->find_unknown_currency( lt_currency ) IS NOT INITIAL.
-        APPEND VALUE #( msgno         = '204'
-                        msgtx         = message_text( iv_msgno = '204'
-                                                      iv_v1    = |{ is_order-currency }| )
+        APPEND VALUE #( msgno            = '204'
+                        msgtx            = message_text( iv_msgno = '204'
+                                                         iv_v1    = |{ is_order-currency }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
-                        field         = zcl_zsde002_json=>to_json_name( 'currency' )
+                        field            = zcl_zsde002_json=>to_json_name( 'currency' )
                       ) TO rt_error.
       ENDIF.
     ENDIF.
@@ -758,11 +758,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
       IF <lfs_pricing>-condition_type IS NOT INITIAL
       AND line_exists( lt_unknown_condition_type[ table_line = lv_condition_type ] ).
-        APPEND VALUE #( msgno         = '205'
-                        msgtx         = message_text( iv_msgno = '205'
-                                                      iv_v1    = |{ <lfs_pricing>-condition_type }| )
+        APPEND VALUE #( msgno            = '205'
+                        msgtx            = message_text( iv_msgno = '205'
+                                                         iv_v1    = |{ <lfs_pricing>-condition_type }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
-                        field         = zcl_zsde002_json=>to_json_name( 'condition_type' )
+                        field            = zcl_zsde002_json=>to_json_name( 'condition_type' )
                       ) TO rt_error.
       ENDIF.
     ENDLOOP.
@@ -792,12 +792,12 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       INSERT lv_product INTO TABLE lt_product.
 
       IF go_master_data->find_unknown_product( lt_product ) IS NOT INITIAL.
-        APPEND VALUE #( msgno         = '206'
-                        msgtx         = message_text( iv_msgno = '206'
-                                                      iv_v1    = |{ is_item-customer_material }| )
+        APPEND VALUE #( msgno            = '206'
+                        msgtx            = message_text( iv_msgno = '206'
+                                                         iv_v1    = |{ is_item-customer_material }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
                         sf_item_id_ref   = is_item-sf_item_id_ref
-                        field         = zcl_zsde002_json=>to_json_name( 'customer_material' )
+                        field            = zcl_zsde002_json=>to_json_name( 'customer_material' )
                       ) TO rt_error.
       ENDIF.
     ENDIF.
@@ -808,12 +808,12 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       INSERT lv_plant INTO TABLE lt_plant.
 
       IF go_master_data->find_unknown_plant( lt_plant ) IS NOT INITIAL.
-        APPEND VALUE #( msgno         = '207'
-                        msgtx         = message_text( iv_msgno = '207'
-                                                      iv_v1    = |{ is_item-plant }| )
+        APPEND VALUE #( msgno            = '207'
+                        msgtx            = message_text( iv_msgno = '207'
+                                                         iv_v1    = |{ is_item-plant }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
                         sf_item_id_ref   = is_item-sf_item_id_ref
-                        field         = zcl_zsde002_json=>to_json_name( 'storage_location' )
+                        field            = zcl_zsde002_json=>to_json_name( 'plant' )
                       ) TO rt_error.
       ENDIF.
       ENDIF.
@@ -824,12 +824,12 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         INSERT lv_storage_location INTO TABLE lt_storage_location.
 
         IF go_master_data->find_unknown_storage_location( lt_storage_location ) IS NOT INITIAL.
-          APPEND VALUE #( msgno         = '208'
-                          msgtx         = message_text( iv_msgno = '208'
-                                                        iv_v1    = |{ is_item-storage_location }| )
+          APPEND VALUE #( msgno            = '208'
+                          msgtx            = message_text( iv_msgno = '208'
+                                                           iv_v1    = |{ is_item-storage_location }| )
                           sf_header_id_ref = is_order-sf_header_id_ref
                           sf_item_id_ref   = is_item-sf_item_id_ref
-                          field         = zcl_zsde002_json=>to_json_name( 'storagelocation' )
+                          field            = zcl_zsde002_json=>to_json_name( 'storage_location' )
                         ) TO rt_error.
         ENDIF.
       ENDIF.
@@ -846,13 +846,13 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) INTO TABLE lt_base_unit.
 
         IF go_master_data->find_unknown_base_unit( lt_base_unit ) IS NOT INITIAL.
-          APPEND VALUE #( msgno         = '209'
-                          msgtx         = message_text( iv_msgno = '209'
-                                                        iv_v1    = |{ is_item-customer_material }|
-                                                        iv_v2    = |{ is_item-sales_unit }| )
+          APPEND VALUE #( msgno            = '209'
+                          msgtx            = message_text( iv_msgno = '209'
+                                                           iv_v1    = |{ is_item-customer_material }|
+                                                           iv_v2    = |{ is_item-sales_unit }| )
                           sf_header_id_ref = is_order-sf_header_id_ref
                           sf_item_id_ref   = is_item-sf_item_id_ref
-                          field         = zcl_zsde002_json=>to_json_name( 'sales_unit' )
+                          field            = zcl_zsde002_json=>to_json_name( 'sales_unit' )
                         ) TO rt_error.
         ENDIF.
       ENDIF.
@@ -872,12 +872,12 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
         IF <lfs_pricing>-condition_type IS NOT INITIAL
         AND line_exists( lt_unknown_condition_type[ table_line = lv_condition_type ] ).
-          APPEND VALUE #( msgno         = '210'
-                          msgtx         = message_text( iv_msgno = '210'
-                                                        iv_v1    = |{ <lfs_pricing>-condition_type }| )
+          APPEND VALUE #( msgno            = '210'
+                          msgtx            = message_text( iv_msgno = '210'
+                                                           iv_v1    = |{ <lfs_pricing>-condition_type }| )
                           sf_header_id_ref = is_order-sf_header_id_ref
                           sf_item_id_ref   = is_item-sf_item_id_ref
-                          field         = zcl_zari002_json=>to_json_name( 'conditiontype' )
+                          field            = zcl_zsde002_json=>to_json_name( 'conditiontype' )
                         ) TO rt_error.
         ENDIF.
       ENDLOOP.

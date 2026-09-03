@@ -11,9 +11,9 @@ CLASS zcl_zsde002_http DEFINITION
     TYPES:
       BEGIN OF ty_pricing,
         condition_type            TYPE string,
-        condition_amount          TYPE p LENGTH 11 DECIMALS 2,
+        condition_amount          TYPE string,
         condition_currency        TYPE string,
-        condition_pricing_unit    TYPE p LENGTH 5 DECIMALS 0,
+        condition_pricing_unit    TYPE string,
         condition_unit_of_measure TYPE string,
       END OF ty_pricing,
       tt_pricing TYPE STANDARD TABLE OF ty_pricing WITH EMPTY KEY,
@@ -36,15 +36,15 @@ CLASS zcl_zsde002_http DEFINITION
         route              TYPE string,
         sf_item_id_ref     TYPE string,
         " Item Pricing Data
-        pricings          TYPE tt_pricing,
+        pricings           TYPE tt_pricing,
       END OF ty_item,
       tt_item TYPE STANDARD TABLE OF ty_item WITH EMPTY KEY,
 
       BEGIN OF ty_order_in,
         " Header Data
-        sf_header_id_ref               TYPE string,
-        sales_order_temp_id            TYPE string,
-        process_type                 TYPE string,
+        sf_header_id_ref              TYPE string,
+        sales_order_temp_id           TYPE string,
+        process_type                  TYPE string,
         tran_type                     TYPE string,
         sales_order_type              TYPE string,
         sales_organization            TYPE string,
