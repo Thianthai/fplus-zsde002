@@ -224,22 +224,37 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
   METHOD zif_zsde002_master_data~find_unknown_storage_location.
 
-    DATA lr_storage_location TYPE RANGE OF zif_zsde002_master_data=>ty_storage_location.
+    DATA lr_plant            TYPE RANGE OF zif_zsde002_master_data=>ty_storage_location-plant.
+    DATA lr_storage_location TYPE RANGE OF zif_zsde002_master_data=>ty_storage_location-storage_location.
 
     IF it_key IS INITIAL.
       RETURN.
     ENDIF.
 
-    lr_storage_location = VALUE #( FOR <lfs_for> IN it_key
-                                 ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+    LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
+
+      IF NOT line_exists( lr_plant[ low = <lfs_key>-plant ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-plant )
+                     TO lr_plant.
+      ENDIF.
+
+      IF NOT line_exists( lr_storage_location[ low = <lfs_key>-storage_location ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-storage_location )
+                     TO lr_storage_location.
+      ENDIF.
+
+    ENDLOOP.
 
     SELECT FROM I_StorageLocation
-      FIELDS StorageLocation
-      WHERE StorageLocation IN @lr_storage_location
+      FIELDS Plant,
+             StorageLocation
+      WHERE Plant           IN @lr_plant
+        AND StorageLocation IN @lr_storage_location
       INTO TABLE @DATA(lt_existing).
 
-    LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
-      IF NOT line_exists( lt_existing[ StorageLocation = <lfs_key> ] ).
+    LOOP AT it_key ASSIGNING <lfs_key>.
+      IF NOT line_exists( lt_existing[ Plant           = <lfs_key>-plant
+                                       StorageLocation = <lfs_key>-storage_location ] ).
         INSERT <lfs_key> INTO TABLE rt_result.
       ENDIF.
     ENDLOOP.

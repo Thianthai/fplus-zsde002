@@ -192,7 +192,7 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
                                 )->apply( VALUE #( ( xco_cp_json=>transformation->underscore_to_pascal_case ) )
                                 )->to_string( ) ).
 
-    " For Function Testing
+    " For Functional Testing
 *    DATA(ls_response) = VALUE ty_response( request_id = |{ ls_result-request_id }|
 *                                           passed     = ls_result-passed
 *                                           failed     = ls_result-failed
@@ -209,8 +209,10 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
 *    co_http_response->set_header_field( i_name  = 'Content-Type'
 *                                        i_value = 'application/json' ).
 *
-*    co_http_response->set_status( i_code   = COND #( WHEN ls_response-errors[] IS INITIAL THEN 200 ELSE 400 )
-*                                  i_reason = COND #( WHEN ls_response-errors[] IS INITIAL THEN 'OK' ELSE 'Bad Request' ) ).
+*    DATA(lv_failed) = xsdbool( line_exists( ls_response-errors[ type = `E` ] ) ).
+*
+*    co_http_response->set_status( i_code   = COND #( WHEN lv_failed = abap_false THEN 200 ELSE 400 )
+*                                  i_reason = COND #( WHEN lv_failed = abap_false THEN 'OK' ELSE 'Bad Request' ) ).
 *
 *    co_http_response->set_text( xco_cp_json=>data->from_abap( ls_response
 *                                )->apply( VALUE #( ( xco_cp_json=>transformation->underscore_to_pascal_case ) )
@@ -230,7 +232,9 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
       DO 2 TIMES.
         APPEND INITIAL LINE TO <lfs_order>-pricings ASSIGNING FIELD-SYMBOL(<lfs_order_pricing>).
         <lfs_order_pricing>-condition_type = |ConditionType-{ sy-index }|.
+      ENDDO.
 
+      DO 2 TIMES.
         APPEND INITIAL LINE TO <lfs_order>-items ASSIGNING FIELD-SYMBOL(<lfs_item>).
         <lfs_item>-sf_item_id_ref = |SfItemIdRef-{ sy-index }|.
 

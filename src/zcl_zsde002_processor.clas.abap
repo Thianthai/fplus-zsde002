@@ -141,10 +141,10 @@ CLASS zcl_zsde002_processor DEFINITION
                 it_pricing      TYPE tt_item_pricing
       RETURNING VALUE(rt_error) TYPE tt_error.
 
-    METHODS check_duplicate
-      IMPORTING is_order         TYPE ty_order
-                it_item          TYPE tt_item
-      RETURNING VALUE(rt_error) TYPE tt_error.
+    "! คืน SfHeaderIdRef ที่ซ้ำกันภายใน request เดียว
+    METHODS find_duplicate_header
+      IMPORTING it_order         TYPE zcl_zsde002_http=>tt_order_in
+      RETURNING VALUE(rt_result) TYPE string_table.
 
     METHODS save
       IMPORTING is_order         TYPE ty_order
@@ -206,9 +206,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     go_master_data = COND #( WHEN io_master_data IS BOUND THEN io_master_data
                              ELSE NEW zcl_zsde002_master_data( ) ).
 
+    DATA(lo_param) = zcl_param=>create_instance( iv_company_code = '1000' iv_module_id = 'SD' ).
     go_param = COND #( WHEN io_param IS BOUND THEN io_param
-                       ELSE NEW zcl_param( iv_company_code = '1000'
-                                           iv_module_id    = 'SD' ) ).
+                       ELSE lo_param ).
 
   ENDMETHOD.
 
@@ -233,6 +233,23 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    " 0.1 Payload ------------------------------------------------------
+    IF iv_body IS INITIAL.
+      APPEND VALUE #( msgno = '010'
+                      msgty = 'E'
+                      msgtx = message_text( '010' )
+                    ) TO rs_result-errors.
+      RETURN.
+    ENDIF.
+
+    IF NOT matches( val = iv_body pcre = '^\s*\{' ).
+      APPEND VALUE #( msgno = '011'
+                      msgty = 'E'
+                      msgtx = message_text( '011' )
+                    ) TO rs_result-errors.
+      RETURN.
+    ENDIF.
+
     " 1. Parse ---------------------------------------------------------
     TRY.
         zcl_zsde002_json=>parse_json_request( EXPORTING iv_body    = iv_body
@@ -246,16 +263,36 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         RETURN.
     ENDTRY.
 
+    IF ls_request-orders IS INITIAL.
+      APPEND VALUE #( msgno = '013'
+                      msgty = 'E'
+                      msgtx = message_text( '013' )
+                    ) TO rs_result-errors.
+      RETURN.
+    ENDIF.
+
     " 2. Request ID ----------------------------------------------------
     IF ls_request-request_id IS INITIAL.
       ls_request-request_id = |{ cl_abap_context_info=>get_system_date( ) }_| &&
                               |{ cl_abap_context_info=>get_system_time( ) }|.
     ENDIF.
 
+    IF strlen( ls_request-request_id ) > 20.
+      APPEND VALUE #( msgno = '014'
+                      msgty = 'W'
+                      msgtx = message_text( iv_msgno = '014'
+                                            iv_msgty = 'W'
+                                            iv_v1    = ls_request-request_id
+                                            iv_v2    = `20` )
+                    ) TO rs_result-errors.
+    ENDIF.
+
     rs_result-request_id = ls_request-request_id.
 
     " 3. Prefetch Master Data -----------------------------------------
     prefetch_master_data( ls_request-orders ).
+
+    DATA(lt_duplicate_header) = find_duplicate_header( ls_request-orders ).
 
     " 4. Process -------------------------------------------------------
     LOOP AT ls_request-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
@@ -298,6 +335,29 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                              it_error = lt_error
                            ) TO rs_result-orders.
         CONTINUE.
+      ENDIF.
+
+      " Duplicate SfHeaderIdRef ภายใน request เดียวกัน
+      IF  ls_order-sf_header_id_ref IS NOT INITIAL
+      AND line_exists( lt_duplicate_header[ table_line = |{ ls_order-sf_header_id_ref }| ] ).
+        APPEND VALUE #( msgno            = '015'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '015'
+                                                         iv_v1    = |{ ls_order-sf_header_id_ref }| )
+                        sf_header_id_ref = ls_order-sf_header_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'sf_header_id_ref' )
+                      ) TO lt_error.
+      ENDIF.
+
+      " Order ที่ไม่มี item เลย
+      IF lt_item IS INITIAL.
+        APPEND VALUE #( msgno            = '016'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '016'
+                                                         iv_v1    = |{ ls_order-sf_header_id_ref }| )
+                        sf_header_id_ref = ls_order-sf_header_id_ref
+                        field            = `Items`
+                      ) TO lt_error.
       ENDIF.
 
       " 4.2 Raw request of this order ----------------------------------
@@ -599,6 +659,13 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                                iv_sf_header_id_ref = is_order-sf_header_id_ref
                              ) TO rt_error.
 
+    " Validate Format --------------------------------------------------
+    APPEND LINES OF to_errors( it_finding          = zcl_zsde002_validator=>check_order_format(
+                                                       EXPORTING is_order   = is_order
+                                                                 it_pricing = it_pricing )
+                               iv_sf_header_id_ref = is_order-sf_header_id_ref
+                             ) TO rt_error.
+
     " 2. Validate Process Type -----------------------------------------
     IF  is_order-process_type IS NOT INITIAL
     AND is_order-process_type NOT IN gs_param-lr_processtype.
@@ -630,6 +697,13 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                                iv_sf_item_id_ref   = is_item-sf_item_id_ref
                              ) TO rt_error.
 
+    APPEND LINES OF to_errors( it_finding          = zcl_zsde002_validator=>check_item_format(
+                                                       EXPORTING is_item    = is_item
+                                                                 it_pricing = it_pricing )
+                               iv_sf_header_id_ref = is_order-sf_header_id_ref
+                               iv_sf_item_id_ref   = is_item-sf_item_id_ref
+                             ) TO rt_error.
+
     " 2. Validate Master Data ------------------------------------------
     APPEND LINES OF check_item_master_data( is_order   = is_order
                                             is_item    = is_item
@@ -656,7 +730,6 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     DATA lv_payment_terms       TYPE zif_zsde002_master_data=>ty_payment_terms.
     DATA lv_currency            TYPE zif_zsde002_master_data=>ty_currency.
     DATA lv_plant               TYPE zif_zsde002_master_data=>ty_plant.
-    DATA lv_storage_location    TYPE zif_zsde002_master_data=>ty_storage_location.
     DATA lv_condition_type      TYPE zif_zsde002_master_data=>ty_condition_type.
     DATA lv_material            TYPE zif_zsde002_master_data=>ty_product.
 
@@ -728,14 +801,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
           INSERT lv_material INTO TABLE lt_product.
         ENDIF.
 
-        IF <lfs_item>-plant IS NOT INITIAL.
-          lv_plant = <lfs_item>-plant.
-          INSERT lv_plant INTO TABLE lt_plant.
-        ENDIF.
-
-        IF <lfs_item>-storage_location IS NOT INITIAL.
-          lv_storage_location = <lfs_item>-storage_location.
-          INSERT lv_storage_location INTO TABLE lt_storage_location.
+        IF  <lfs_item>-plant            IS NOT INITIAL
+        AND <lfs_item>-storage_location IS NOT INITIAL.
+          INSERT VALUE #( plant            = <lfs_item>-plant
+                          storage_location = <lfs_item>-storage_location
+                        ) INTO TABLE lt_storage_location.
         ENDIF.
 
         IF  lv_material           IS NOT INITIAL
@@ -923,11 +993,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
   METHOD check_item_master_data.
 
-    DATA lv_material         TYPE zif_zsde002_master_data=>ty_product.
-    DATA lv_product          TYPE zif_zsde002_master_data=>ty_product.
-    DATA lv_plant            TYPE zif_zsde002_master_data=>ty_plant.
-    DATA lv_storage_location TYPE zif_zsde002_master_data=>ty_storage_location.
-    DATA lv_condition_type   TYPE zif_zsde002_master_data=>ty_condition_type.
+    DATA lv_material       TYPE zif_zsde002_master_data=>ty_product.
+    DATA lv_product        TYPE zif_zsde002_master_data=>ty_product.
+    DATA lv_plant          TYPE zif_zsde002_master_data=>ty_plant.
+    DATA lv_condition_type TYPE zif_zsde002_master_data=>ty_condition_type.
 
     " Product
     " ส่ง MaterialNumber มา → เช็คกับ I_Product
@@ -969,10 +1038,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     ENDIF.
 
     " Storage Location
-    IF is_item-storage_location IS NOT INITIAL.
-      lv_storage_location = is_item-storage_location.
+    IF  is_item-plant            IS NOT INITIAL
+    AND is_item-storage_location IS NOT INITIAL.
 
-      IF line_exists( gs_unknown-storage_location[ table_line = lv_storage_location ] ).
+      IF line_exists( gs_unknown-storage_location[ plant            = is_item-plant
+                                                   storage_location = is_item-storage_location ] ).
         APPEND VALUE #( msgno            = '252'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '252'
@@ -1027,7 +1097,23 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD check_duplicate.
+  METHOD find_duplicate_header.
+
+    DATA lt_seen TYPE string_table.
+
+    LOOP AT it_order ASSIGNING FIELD-SYMBOL(<lfs_order>).
+
+      CHECK <lfs_order>-sf_header_id_ref IS NOT INITIAL.
+
+      IF line_exists( lt_seen[ table_line = <lfs_order>-sf_header_id_ref ] ).
+        IF NOT line_exists( rt_result[ table_line = <lfs_order>-sf_header_id_ref ] ).
+          APPEND <lfs_order>-sf_header_id_ref TO rt_result.
+        ENDIF.
+      ELSE.
+        APPEND <lfs_order>-sf_header_id_ref TO lt_seen.
+      ENDIF.
+
+    ENDLOOP.
 
   ENDMETHOD.
 
@@ -1159,8 +1245,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       APPEND VALUE #( order_message_uuid    = new_uuid( )
                       order_uuid            = is_order-order_uuid
                       msg_seq               = sy-tabix
-                      " TODO แยก HEADER / ITEM ให้แม่นยำได้เมื่อจัดกลุ่มเลข message เสร็จ
                       message_area          = COND #( WHEN <lfs_error>-sf_item_id_ref IS NOT INITIAL
+                                                        OR <lfs_error>-msgno BETWEEN '150' AND '199'
+                                                        OR <lfs_error>-msgno BETWEEN '250' AND '299'
                                                       THEN 'ITEM'
                                                       ELSE 'HEADER' )
                       status                = COND #( WHEN <lfs_error>-msgty IS INITIAL

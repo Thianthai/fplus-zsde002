@@ -32,6 +32,14 @@ CLASS zcl_zsde002_validator DEFINITION
       IMPORTING iv_value         TYPE clike
       RETURNING VALUE(rv_result) TYPE I_Product-Product.
 
+    CLASS-METHODS is_valid_date
+      IMPORTING iv_value         TYPE clike
+      RETURNING VALUE(rv_result) TYPE abap_bool.
+
+    CLASS-METHODS is_valid_number
+      IMPORTING iv_value         TYPE clike
+      RETURNING VALUE(rv_result) TYPE abap_bool.
+
     CLASS-METHODS check_order_mandatory
       IMPORTING is_order          TYPE ty_order
                 is_param          TYPE ty_param
@@ -41,6 +49,16 @@ CLASS zcl_zsde002_validator DEFINITION
       IMPORTING is_order          TYPE ty_order
                 is_item           TYPE ty_item
                 is_param          TYPE ty_param
+      RETURNING VALUE(rt_finding) TYPE tt_finding.
+
+    CLASS-METHODS check_order_format
+      IMPORTING is_order          TYPE ty_order
+                it_pricing        TYPE zcl_zsde002_processor=>tt_order_pricing
+      RETURNING VALUE(rt_finding) TYPE tt_finding.
+
+    CLASS-METHODS check_item_format
+      IMPORTING is_item           TYPE ty_item
+                it_pricing        TYPE zcl_zsde002_processor=>tt_item_pricing
       RETURNING VALUE(rt_finding) TYPE tt_finding.
 
   PRIVATE SECTION.
@@ -108,6 +126,28 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
 
     lv_material = iv_value.
     rv_result   = |{ lv_material ALPHA = IN }|.
+
+  ENDMETHOD.
+
+
+  METHOD is_valid_date.
+
+    " ตรวจหลังผ่าน to_internal_date จะได้ validate ค่าที่จะถูกส่งเข้า SAP จริงๆ
+    " รับได้ทั้ง 2026-08-30 / 2026/08/30 / 2026.08.30 / 20260830
+    DATA(lv_internal) = zcl_zsde002_json=>to_internal_date( CONV #( iv_value ) ).
+
+    rv_result = xsdbool( matches( val  = lv_internal
+                                  pcre = '^\d{4}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$' ) ).
+
+  ENDMETHOD.
+
+
+  METHOD is_valid_number.
+
+    DATA(lv_value) = condense( CONV string( iv_value ) ).
+
+    rv_result = xsdbool( matches( val  = lv_value
+                                  pcre = '^[+-]?\d+(\.\d+)?$' ) ).
 
   ENDMETHOD.
 
@@ -250,6 +290,76 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
 
       ENDCASE.
 
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD check_order_format.
+
+    IF  is_order-customer_reference_date IS NOT INITIAL
+    AND is_valid_date( is_order-customer_reference_date ) = abap_false.
+      APPEND VALUE #( msgno = '300'
+                      msgty = 'E'
+                      msgv1 = `customer_reference_date`
+                      msgv2 = |{ is_order-customer_reference_date }|
+                      field = `customer_reference_date` ) TO rt_finding.
+    ENDIF.
+
+    IF  is_order-document_date IS NOT INITIAL
+    AND is_valid_date( is_order-document_date ) = abap_false.
+      APPEND VALUE #( msgno = '300'
+                      msgty = 'E'
+                      msgv1 = `document_date`
+                      msgv2 = |{ is_order-document_date }|
+                      field = `document_date` ) TO rt_finding.
+    ENDIF.
+
+    IF  is_order-req_delivery_date IS NOT INITIAL
+    AND is_valid_date( is_order-req_delivery_date ) = abap_false.
+      APPEND VALUE #( msgno = '300'
+                      msgty = 'E'
+                      msgv1 = `req_delivery_date`
+                      msgv2 = |{ is_order-req_delivery_date }|
+                      field = `req_delivery_date` ) TO rt_finding.
+    ENDIF.
+
+    LOOP AT it_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
+      IF  <lfs_pricing>-condition_amount IS NOT INITIAL
+      AND is_valid_number( <lfs_pricing>-condition_amount ) = abap_false.
+        APPEND VALUE #( msgno = '302'
+                        msgty = 'E'
+                        msgv1 = |{ <lfs_pricing>-condition_type }|
+                        msgv2 = |{ <lfs_pricing>-condition_amount }|
+                        field = `condition_amount` ) TO rt_finding.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD check_item_format.
+
+    DATA(lv_item) = |{ is_item-item }|.
+
+    IF  is_item-requested_quantity IS NOT INITIAL
+    AND is_valid_number( is_item-requested_quantity ) = abap_false.
+      APPEND VALUE #( msgno = '301'
+                      msgty = 'E'
+                      msgv1 = lv_item
+                      msgv2 = |{ is_item-requested_quantity }|
+                      field = `requested_quantity` ) TO rt_finding.
+    ENDIF.
+
+    LOOP AT it_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
+      IF  <lfs_pricing>-condition_amount IS NOT INITIAL
+      AND is_valid_number( <lfs_pricing>-condition_amount ) = abap_false.
+        APPEND VALUE #( msgno = '302'
+                        msgty = 'E'
+                        msgv1 = |{ <lfs_pricing>-condition_type }|
+                        msgv2 = |{ <lfs_pricing>-condition_amount }|
+                        field = `condition_amount` ) TO rt_finding.
+      ENDIF.
     ENDLOOP.
 
   ENDMETHOD.

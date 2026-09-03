@@ -23,13 +23,12 @@ CLASS zcl_zsde002_json DEFINITION
       IMPORTING iv_field         TYPE string
       RETURNING VALUE(rv_result) TYPE string.
 
-  PROTECTED SECTION.
-  PRIVATE SECTION.
-
     CLASS-METHODS to_internal_date
       IMPORTING iv_value         TYPE string
       RETURNING VALUE(rv_result) TYPE string.
 
+  PROTECTED SECTION.
+  PRIVATE SECTION.
 ENDCLASS.
 
 

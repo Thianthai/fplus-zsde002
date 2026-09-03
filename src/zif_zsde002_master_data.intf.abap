@@ -6,7 +6,6 @@ INTERFACE zif_zsde002_master_data
     ty_payment_terms       TYPE I_PaymentTerms-PaymentTerms,
     ty_product             TYPE I_Product-Product,
     ty_plant               TYPE I_Plant-Plant,
-    ty_storage_location    TYPE I_StorageLocation-StorageLocation,
     ty_condition_type      TYPE I_ConditionType-ConditionType,
     ty_currency            TYPE I_Currency-Currency.
 
@@ -30,7 +29,12 @@ INTERFACE zif_zsde002_master_data
     BEGIN OF ty_product_unit,
       product          TYPE I_ProductUnitsOfMeasure-Product,
       alternative_unit TYPE I_ProductUnitsOfMeasure-AlternativeUnit,
-    END OF ty_product_unit.
+    END OF ty_product_unit,
+
+    BEGIN OF ty_storage_location,
+      plant            TYPE I_StorageLocation-Plant,
+      storage_location TYPE I_StorageLocation-StorageLocation,
+    END OF ty_storage_location.
 
   TYPES:
     tt_sales_document_type TYPE SORTED TABLE OF ty_sales_document_type
@@ -42,7 +46,7 @@ INTERFACE zif_zsde002_master_data
     tt_plant               TYPE SORTED TABLE OF ty_plant
                            WITH UNIQUE KEY table_line,
     tt_storage_location    TYPE SORTED TABLE OF ty_storage_location
-                           WITH UNIQUE KEY table_line,
+                           WITH UNIQUE KEY plant storage_location,
     tt_product_unit        TYPE SORTED TABLE OF ty_product_unit
                            WITH UNIQUE KEY product alternative_unit,
     tt_condition_type      TYPE SORTED TABLE OF ty_condition_type
