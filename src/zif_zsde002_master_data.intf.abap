@@ -10,6 +10,16 @@ INTERFACE zif_zsde002_master_data
     ty_currency            TYPE I_Currency-Currency.
 
   TYPES:
+    "! Process type mapping — เฉพาะ field ที่ validation ใช้
+    BEGIN OF ty_process_type,
+      process_type         TYPE ztsd_e002_prctyp-process_type,
+      tran_type            TYPE ztsd_e002_prctyp-tran_type,
+      sales_order_type     TYPE ztsd_e002_prctyp-sales_order_type,
+      sales_organization   TYPE ztsd_e002_prctyp-sales_organization,
+      distribution_channel TYPE ztsd_e002_prctyp-distribution_channel,
+      division             TYPE ztsd_e002_prctyp-division,
+    END OF ty_process_type,
+
     "! Sales Area
     BEGIN OF ty_sales_area,
       sales_organization   TYPE I_SalesArea-SalesOrganization,
@@ -37,6 +47,8 @@ INTERFACE zif_zsde002_master_data
     END OF ty_storage_location.
 
   TYPES:
+    tt_process_type        TYPE SORTED TABLE OF ty_process_type
+                           WITH UNIQUE KEY process_type,
     tt_sales_document_type TYPE SORTED TABLE OF ty_sales_document_type
                            WITH UNIQUE KEY table_line,
     tt_payment_terms       TYPE SORTED TABLE OF ty_payment_terms
@@ -57,6 +69,11 @@ INTERFACE zif_zsde002_master_data
                            WITH UNIQUE KEY sales_organization distribution_channel division,
     tt_cust_sales_area     TYPE SORTED TABLE OF ty_cust_sales_area
                            WITH UNIQUE KEY sales_organization distribution_channel division customer.
+
+  "! อ่าน process type mapping ทั้งใบ — ต่างจาก find_unknown_* ตรงที่คืนทุกแถว
+  "! ไม่ใช่เฉพาะที่หาไม่เจอ เพราะ validation ต้องเทียบค่าใน row ไม่ใช่แค่เช็คว่ามีอยู่
+  METHODS read_process_type
+    RETURNING VALUE(rt_result) TYPE tt_process_type.
 
   METHODS find_unknown_sales_area
     IMPORTING it_key           TYPE tt_sales_area

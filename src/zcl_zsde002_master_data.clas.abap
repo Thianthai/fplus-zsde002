@@ -11,6 +11,19 @@ ENDCLASS.
 
 CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
+  METHOD zif_zsde002_master_data~read_process_type.
+
+    SELECT FROM ztsd_e002_prctyp
+      FIELDS process_type,
+             tran_type,
+             sales_order_type,
+             sales_organization,
+             distribution_channel,
+             division
+      INTO TABLE @rt_result.
+
+  ENDMETHOD.
+
   METHOD zif_zsde002_master_data~find_unknown_sales_area.
 
     DATA lr_sales_organization   TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-sales_organization.

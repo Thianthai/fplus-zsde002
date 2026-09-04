@@ -169,28 +169,28 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     ls_partner-%cid_ref = gc_cid_header.
 
     IF is_order-ship_to_party IS NOT INITIAL.
-      APPEND VALUE #( %cid            = next_cid( `PA` )
-                      PartnerFunction = 'SH'
-                      Customer        = is_order-ship_to_party ) TO ls_partner-%target.
+      APPEND VALUE #( %cid                   = next_cid( `PA` )
+                      PartnerFunctionForEdit = 'WE'
+                      Customer               = is_order-ship_to_party ) TO ls_partner-%target.
     ENDIF.
 
     IF is_order-bill_to_party IS NOT INITIAL.
-      APPEND VALUE #( %cid            = next_cid( `PA` )
-                      PartnerFunction = 'BP'
-                      Customer        = is_order-bill_to_party ) TO ls_partner-%target.
+      APPEND VALUE #( %cid                   = next_cid( `PA` )
+                      PartnerFunctionForEdit = 'RE'
+                      Customer               = is_order-bill_to_party ) TO ls_partner-%target.
     ENDIF.
 
     IF is_order-payer IS NOT INITIAL.
-      APPEND VALUE #( %cid            = next_cid( `PA` )
-                      PartnerFunction = 'PY'
-                      Customer        = is_order-payer ) TO ls_partner-%target.
+      APPEND VALUE #( %cid                   = next_cid( `PA` )
+                      PartnerFunctionForEdit = 'RG'
+                      Customer               = is_order-payer ) TO ls_partner-%target.
     ENDIF.
 
     IF  is_order-stock_van IS NOT INITIAL
     AND is_order-process_type IN is_param-lr_processtype_stockvan.
-      APPEND VALUE #( %cid            = next_cid( `PA` )
-                      PartnerFunction = 'SB'
-                      Customer        = is_order-stock_van ) TO ls_partner-%target.
+      APPEND VALUE #( %cid                   = next_cid( `PA` )
+                      PartnerFunctionForEdit = 'SB'          " <-- ยังไม่ยืนยัน ดูหมายเหตุ
+                      Customer               = is_order-stock_van ) TO ls_partner-%target.
     ENDIF.
 
     IF ls_partner-%target IS NOT INITIAL.
@@ -363,7 +363,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
           WITH lt_header
 
         CREATE BY \_Partner
-          FIELDS ( PartnerFunction
+          FIELDS ( PartnerFunctionForEdit
                    Customer )
           WITH lt_partner
 

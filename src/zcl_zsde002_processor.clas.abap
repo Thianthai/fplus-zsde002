@@ -60,7 +60,7 @@ CLASS zcl_zsde002_processor DEFINITION
       END OF ty_result,
 
       BEGIN OF ty_param,
-        lr_processtype          TYPE RANGE OF ty_order-process_type,
+        t_process_type          TYPE zif_zsde002_master_data=>tt_process_type,
         lr_processtype_stockvan TYPE RANGE OF ty_order-process_type,
         lr_processtype_sfid     TYPE RANGE OF ty_order-process_type,
         lr_processtype_edi      TYPE RANGE OF ty_order-process_type,
@@ -222,7 +222,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     go_master_data = COND #( WHEN io_master_data IS BOUND THEN io_master_data
                              ELSE NEW zcl_zsde002_master_data( ) ).
 
-    DATA(lo_param) = zcl_param=>create_instance( iv_company_code = '1000' iv_module_id = 'SD' ).
+    DATA(lo_param) = zcl_param=>create_instance( iv_company_code = '' iv_module_id = 'SD' ).
     go_param = COND #( WHEN io_param IS BOUND THEN io_param
                        ELSE lo_param ).
 
@@ -308,7 +308,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
              lt_item_pricings[],
              lt_error[].
 
-      " 6.1 Normalize --------------------------------------------------
+      " 6.1 Raw request of this order ----------------------------------
+      ls_order-request_body = to_request_body( <lfs_order> ).
+
+      " 6.2 Normalize --------------------------------------------------
       ls_order          = CORRESPONDING #( <lfs_order> ).
       lt_order_pricings = CORRESPONDING #( <lfs_order>-pricings ).
 
@@ -339,6 +342,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
+      " 6.3 Check Duplicate Header -------------------------------------
       " Duplicate SfHeaderIdRef ภายใน request เดียวกัน
       IF  ls_order-sf_header_id_ref IS NOT INITIAL
       AND line_exists( lt_duplicate_header[ table_line = |{ ls_order-sf_header_id_ref }| ] ).
@@ -351,6 +355,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
+      " 6.4 Check Empty Item -------------------------------------------
       " Order ที่ไม่มี item เลย
       IF lt_item IS INITIAL.
         APPEND VALUE #( msgno            = '016'
@@ -362,10 +367,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " 6.2 Raw request of this order ----------------------------------
-      ls_order-request_body = to_request_body( <lfs_order> ).
-
-      " 6.3 Validate ---------------------------------------------------
+      " 6.5 Validate ---------------------------------------------------
       lt_error = VALUE #( BASE lt_error
                           FOR ls_order_error IN validate_order( is_order   = ls_order
                                                                 it_pricing = lt_order_pricings )
@@ -383,7 +385,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                           ( CORRESPONDING #( ls_item_error ) ) ).
       ENDLOOP.
 
-      " 6.4 Post -------------------------------------------------------
+      " 6.6 Post -------------------------------------------------------
       IF NOT line_exists( lt_error[ msgty = 'E' ] ).
         post( EXPORTING it_order_pricing = lt_order_pricings
                         it_item          = lt_item
@@ -392,12 +394,12 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                         ct_error         = lt_error ).
       ENDIF.
 
-      " 6.5 Status -----------------------------------------------------
+      " 6.7 Status -----------------------------------------------------
       ls_order-order_status = COND #( WHEN NOT line_exists( lt_error[ msgty = 'E' ] ) THEN 'S'
                                       WHEN ls_order-sales_order_number IS NOT INITIAL   THEN 'W'
                                       ELSE 'E' ).
 
-      " 6.6 Save -------------------------------------------------------
+      " 6.8 Save -------------------------------------------------------
       " เขียน log เสมอ แม้ order จะไม่ผ่าน validation — ใบที่พังคือใบที่ต้องดูมากที่สุด
       IF save( is_order         = ls_order
                it_order_pricing = lt_order_pricings
@@ -414,7 +416,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " 6.7 Result -----------------------------------------------------
+      " 6.9 Result -----------------------------------------------------
       IF NOT line_exists( lt_error[ msgty = 'E' ] ).
         rs_result-passed = rs_result-passed + 1.
       ELSE.
@@ -426,7 +428,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDLOOP.
 
-    " 7. Request Status --------------------------------------------------
+    " 7. Request Status ------------------------------------------------
     rs_result-status = COND #( WHEN rs_result-passed = 0 THEN 'E'
                                WHEN rs_result-failed = 0 THEN 'S'
                                ELSE 'W' ).
@@ -437,78 +439,77 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
   METHOD get_constant_param.
 
     TRY.
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
-                                       iv_param_name = 'PROCESS_TYPE'
-                             IMPORTING et_range      = cs_param-lr_processtype ).
-
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'CASH_VAN_SALES'
                              IMPORTING et_range      = cs_param-lr_processtype_stockvan ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'SFID'
                              IMPORTING et_range      = cs_param-lr_processtype_sfid ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'EDI'
                              IMPORTING et_range      = cs_param-lr_processtype_edi ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'ONLINE'
                              IMPORTING et_range      = cs_param-lr_processtype_online ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'ZT01'
                              IMPORTING et_range      = cs_param-lr_processtype_zt01 ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'ZT02'
                              IMPORTING et_range      = cs_param-lr_processtype_zt02 ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'ZT09'
                              IMPORTING et_range      = cs_param-lr_processtype_zt09 ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'SLOC'
                              IMPORTING et_range      = cs_param-lr_processtype_sloc ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'BATCH'
                              IMPORTING et_range      = cs_param-lr_processtype_batch ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'TRAN_TYPE'
                                        iv_param_ext  = 'REASON'
                              IMPORTING et_range      = cs_param-lr_trantype_reason ).
 
-        io_param->get_range( EXPORTING iv_app_id     = 'ZSDE002'
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'ORDER_REASON'
                                        iv_param_ext  = 'ZT04'
                              IMPORTING et_range      = cs_param-lr_order_reason ).
 
       CATCH zcx_param INTO DATA(lcx_param).
         add_request_message( EXPORTING iv_msgno = '403'
-                                       iv_v1    = `ZSDE002`
+                                       iv_v1    = `SDE002`
                                        iv_v2    = |{ lcx_param->gv_reason }|
                                        iv_v3    = lcx_param->get_text( )
                              CHANGING  cs_result = cs_result ).
     ENDTRY.
 
-    IF cs_param-lr_processtype IS INITIAL.
+    " master list ของ process type ย้ายมาอยู่ที่ mapping table แล้ว ไม่ได้อยู่ใน param config
+    cs_param-t_process_type = go_master_data->read_process_type( ).
+
+    IF cs_param-t_process_type IS INITIAL.
       add_request_message( EXPORTING iv_msgno = '403'
                                      iv_v1    = `PROCESS_TYPE`
-                                     iv_v2    = `*`
-                                     iv_v3    = `range is empty`
+                                     iv_v2    = `ZTSD_E002_PRCTYP`
+                                     iv_v3    = `mapping table is empty`
                            CHANGING  cs_result = cs_result ).
     ENDIF.
 
@@ -657,26 +658,48 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                                iv_sf_header_id_ref = is_order-sf_header_id_ref
                              ) TO rt_error.
 
-    " Validate Format --------------------------------------------------
+    " 2. Validate Format -----------------------------------------------
     APPEND LINES OF to_errors( it_finding          = zcl_zsde002_validator=>check_order_format(
                                                        EXPORTING is_order   = is_order
                                                                  it_pricing = it_pricing )
                                iv_sf_header_id_ref = is_order-sf_header_id_ref
                              ) TO rt_error.
 
-    " 2. Validate Process Type -----------------------------------------
-    IF  is_order-process_type IS NOT INITIAL
-    AND is_order-process_type NOT IN gs_param-lr_processtype.
-      APPEND VALUE #( msgno            = '303'
-                      msgty            = 'E'
-                      msgtx            = message_text( iv_msgno = '303'
-                                                       iv_v1    = |{ is_order-process_type }| )
-                      sf_header_id_ref = is_order-sf_header_id_ref
-                      field            = zcl_zsde002_json=>to_json_name( 'process_type' )
-                    ) TO rt_error.
+    " 3. Validate Process Type -----------------------------------------
+    " process type ต้องมีใน mapping table และ tran type / doc type / sales area
+    " ต้องตรงกับแถวนั้นด้วย ไม่งั้นถือว่า SBPA ส่งชุดข้อมูลที่ระบบไม่รู้จัก
+    IF is_order-process_type IS NOT INITIAL.
+
+      DATA(lv_invalid) = abap_false.
+
+      READ TABLE gs_param-t_process_type INTO DATA(ls_process_type)
+           WITH TABLE KEY process_type = is_order-process_type.
+
+      IF sy-subrc <> 0.
+        lv_invalid = abap_true.
+
+      ELSEIF ls_process_type-tran_type            <> is_order-tran_type
+          OR ls_process_type-sales_order_type     <> is_order-sales_order_type
+          OR ls_process_type-sales_organization   <> is_order-sales_organization
+          OR ls_process_type-distribution_channel <> is_order-distribution_channel
+          OR ls_process_type-division             <> is_order-division.
+        lv_invalid = abap_true.
+
+      ENDIF.
+
+      IF lv_invalid = abap_true.
+        APPEND VALUE #( msgno            = '303'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '303'
+                                                         iv_v1    = |{ is_order-process_type }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'process_type' )
+                      ) TO rt_error.
+      ENDIF.
+
     ENDIF.
 
-    " 3. Validate Master Data ------------------------------------------
+    " 4. Validate Master Data ------------------------------------------
     APPEND LINES OF check_order_master_data( is_order   = is_order
                                              it_pricing = it_pricing
                                            ) TO rt_error.
