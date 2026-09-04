@@ -308,12 +308,12 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
              lt_item_pricings[],
              lt_error[].
 
-      " 6.1 Raw request of this order ----------------------------------
-      ls_order-request_body = to_request_body( <lfs_order> ).
-
-      " 6.2 Normalize --------------------------------------------------
+      " 6.1 Normalize --------------------------------------------------
       ls_order          = CORRESPONDING #( <lfs_order> ).
       lt_order_pricings = CORRESPONDING #( <lfs_order>-pricings ).
+
+      " เก็บ JSON ดิบของ order ใบนี้ ต้องอยู่หลัง CORRESPONDING เพราะมันทับทั้ง structure
+      ls_order-request_body = to_request_body( <lfs_order> ).
 
       normalize_order( EXPORTING iv_request_id = CONV #( ls_request-request_id )
                        CHANGING  cs_order      = ls_order
@@ -342,7 +342,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         CONTINUE.
       ENDIF.
 
-      " 6.3 Check Duplicate Header -------------------------------------
+      " 6.2 Check Duplicate Header -------------------------------------
       " Duplicate SfHeaderIdRef ภายใน request เดียวกัน
       IF  ls_order-sf_header_id_ref IS NOT INITIAL
       AND line_exists( lt_duplicate_header[ table_line = |{ ls_order-sf_header_id_ref }| ] ).
@@ -355,7 +355,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " 6.4 Check Empty Item -------------------------------------------
+      " 6.3 Check Empty Item -------------------------------------------
       " Order ที่ไม่มี item เลย
       IF lt_item IS INITIAL.
         APPEND VALUE #( msgno            = '016'
@@ -367,7 +367,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " 6.5 Validate ---------------------------------------------------
+      " 6.4 Validate ---------------------------------------------------
       lt_error = VALUE #( BASE lt_error
                           FOR ls_order_error IN validate_order( is_order   = ls_order
                                                                 it_pricing = lt_order_pricings )
@@ -385,7 +385,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                           ( CORRESPONDING #( ls_item_error ) ) ).
       ENDLOOP.
 
-      " 6.6 Post -------------------------------------------------------
+      " 6.5 Post -------------------------------------------------------
       IF NOT line_exists( lt_error[ msgty = 'E' ] ).
         post( EXPORTING it_order_pricing = lt_order_pricings
                         it_item          = lt_item
@@ -394,12 +394,12 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                         ct_error         = lt_error ).
       ENDIF.
 
-      " 6.7 Status -----------------------------------------------------
+      " 6.6 Status -----------------------------------------------------
       ls_order-order_status = COND #( WHEN NOT line_exists( lt_error[ msgty = 'E' ] ) THEN 'S'
                                       WHEN ls_order-sales_order_number IS NOT INITIAL   THEN 'W'
                                       ELSE 'E' ).
 
-      " 6.8 Save -------------------------------------------------------
+      " 6.7 Save -------------------------------------------------------
       " เขียน log เสมอ แม้ order จะไม่ผ่าน validation — ใบที่พังคือใบที่ต้องดูมากที่สุด
       IF save( is_order         = ls_order
                it_order_pricing = lt_order_pricings
@@ -416,7 +416,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " 6.9 Result -----------------------------------------------------
+      " 6.8 Result -----------------------------------------------------
       IF NOT line_exists( lt_error[ msgty = 'E' ] ).
         rs_result-passed = rs_result-passed + 1.
       ELSE.
