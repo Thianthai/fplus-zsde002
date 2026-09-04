@@ -35,22 +35,27 @@ CLASS zcl_zsde002_processor DEFINITION
       END OF ty_error,
       tt_error TYPE STANDARD TABLE OF ty_error WITH EMPTY KEY,
 
+      "! 1 แถว = 1 message — order ที่สำเร็จได้ 1 แถว, order ที่พังได้ 1 แถวต่อ 1 error
       BEGIN OF ty_order_out,
+        status             TYPE symsgty,
+        code               TYPE string,
+        message            TYPE string,
         sales_order_number TYPE ty_order-sales_order_number,
         document_type      TYPE ty_order-sales_order_type,
         customer_reference TYPE ty_order-customer_reference,
         sf_header_id_ref   TYPE ty_order-sf_header_id_ref,
+        sf_item_id_ref     TYPE ty_item-sf_item_id_ref,
         processing_date    TYPE string,
         processing_time    TYPE string,
-        errors             TYPE tt_error,
+        field              TYPE string,
       END OF ty_order_out,
       tt_order_out TYPE STANDARD TABLE OF ty_order_out WITH EMPTY KEY,
 
       BEGIN OF ty_result,
         request_id TYPE ty_response-request_id,
+        status     TYPE symsgty,
         passed     TYPE i,
         failed     TYPE i,
-        errors     TYPE tt_error,
         orders     TYPE tt_order_out,
       END OF ty_result,
 
@@ -90,6 +95,15 @@ CLASS zcl_zsde002_processor DEFINITION
     METHODS process
       IMPORTING iv_body          TYPE string
       RETURNING VALUE(rs_result) TYPE ty_result.
+
+    CLASS-METHODS message_text
+      IMPORTING iv_msgno         TYPE symsgno
+                iv_msgty         TYPE symsgty DEFAULT 'E'
+                iv_v1            TYPE string OPTIONAL
+                iv_v2            TYPE string OPTIONAL
+                iv_v3            TYPE string OPTIONAL
+                iv_v4            TYPE string OPTIONAL
+      RETURNING VALUE(rv_result) TYPE string.
 
   PRIVATE SECTION.
 
@@ -155,15 +169,26 @@ CLASS zcl_zsde002_processor DEFINITION
       RETURNING VALUE(rv_result) TYPE abap_bool.
 
     METHODS post
-      IMPORTING is_order         TYPE ty_order
+      IMPORTING it_order_pricing TYPE tt_order_pricing
                 it_item          TYPE tt_item
-      RETURNING VALUE(rv_result) TYPE abap_bool.
+                it_item_pricing  TYPE tt_item_pricing
+      CHANGING  cs_order         TYPE ty_order
+                ct_error         TYPE tt_error.
 
-    "! ประกอบผลลัพธ์ราย order สำหรับ response
+    "! ประกอบแถว message ของ order 1 ใบ
     METHODS to_order_out
       IMPORTING is_order         TYPE ty_order
                 it_error         TYPE tt_error
-      RETURNING VALUE(rs_result) TYPE ty_order_out.
+      RETURNING VALUE(rt_result) TYPE tt_order_out.
+
+    "! message ระดับ request — ไม่มี order context
+    METHODS add_request_message
+      IMPORTING iv_msgno  TYPE symsgno
+                iv_msgty  TYPE symsgty DEFAULT 'E'
+                iv_v1     TYPE string OPTIONAL
+                iv_v2     TYPE string OPTIONAL
+                iv_v3     TYPE string OPTIONAL
+      CHANGING  cs_result TYPE ty_result.
 
     "! เก็บ JSON ของ order ใบนี้ตามที่ SBPA ส่งมา ก่อนถูก normalize
     METHODS to_request_body
@@ -185,15 +210,6 @@ CLASS zcl_zsde002_processor DEFINITION
                 iv_sf_header_id_ref TYPE ty_order-sf_header_id_ref OPTIONAL
                 iv_sf_item_id_ref   TYPE ty_item-sf_item_id_ref    OPTIONAL
       RETURNING VALUE(rt_error)     TYPE tt_error.
-
-    METHODS message_text
-      IMPORTING iv_msgno         TYPE symsgno
-                iv_msgty         TYPE symsgty DEFAULT 'E'
-                iv_v1            TYPE string OPTIONAL
-                iv_v2            TYPE string OPTIONAL
-                iv_v3            TYPE string OPTIONAL
-                iv_v4            TYPE string OPTIONAL
-      RETURNING VALUE(rv_result) TYPE string.
 
 ENDCLASS.
 
@@ -224,77 +240,64 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     DATA lt_item_pricings  TYPE tt_item_pricing.
     DATA lt_error          TYPE tt_error.
 
-    " 0. Constant Parameter --------------------------------------------
+    " 1. Constant Parameter --------------------------------------------
     get_constant_param( EXPORTING io_param  = go_param
                         CHANGING  cs_param  = gs_param
                                   cs_result = rs_result ).
 
-    IF rs_result-errors[] IS NOT INITIAL.
+    IF rs_result-orders IS NOT INITIAL.
       RETURN.
     ENDIF.
 
-    " 0.1 Payload ------------------------------------------------------
+    " 2. Payload -------------------------------------------------------
     IF iv_body IS INITIAL.
-      APPEND VALUE #( msgno = '010'
-                      msgty = 'E'
-                      msgtx = message_text( '010' )
-                    ) TO rs_result-errors.
+      add_request_message( EXPORTING iv_msgno = '010' CHANGING cs_result = rs_result ).
       RETURN.
     ENDIF.
 
     IF NOT matches( val = iv_body pcre = '^\s*\{' ).
-      APPEND VALUE #( msgno = '011'
-                      msgty = 'E'
-                      msgtx = message_text( '011' )
-                    ) TO rs_result-errors.
+      add_request_message( EXPORTING iv_msgno = '011' CHANGING cs_result = rs_result ).
       RETURN.
     ENDIF.
 
-    " 1. Parse ---------------------------------------------------------
+    " 3. Parse ---------------------------------------------------------
     TRY.
         zcl_zsde002_json=>parse_json_request( EXPORTING iv_body    = iv_body
                                               IMPORTING es_request = ls_request ).
       CATCH zcx_zsde002_error INTO DATA(lcx_error).
-        APPEND VALUE #( msgno = '012'
-                        msgty = 'E'
-                        msgtx = message_text( iv_msgno = '012'
-                                              iv_v1    = lcx_error->get_text( ) )
-                      ) TO rs_result-errors.
+        add_request_message( EXPORTING iv_msgno = '012'
+                                       iv_v1    = lcx_error->get_text( )
+                             CHANGING  cs_result = rs_result ).
         RETURN.
     ENDTRY.
 
     IF ls_request-orders IS INITIAL.
-      APPEND VALUE #( msgno = '013'
-                      msgty = 'E'
-                      msgtx = message_text( '013' )
-                    ) TO rs_result-errors.
+      add_request_message( EXPORTING iv_msgno = '013' CHANGING cs_result = rs_result ).
       RETURN.
     ENDIF.
 
-    " 2. Request ID ----------------------------------------------------
+    " 4. Request ID ----------------------------------------------------
     IF ls_request-request_id IS INITIAL.
       ls_request-request_id = |{ cl_abap_context_info=>get_system_date( ) }_| &&
                               |{ cl_abap_context_info=>get_system_time( ) }|.
     ENDIF.
 
     IF strlen( ls_request-request_id ) > 20.
-      APPEND VALUE #( msgno = '014'
-                      msgty = 'W'
-                      msgtx = message_text( iv_msgno = '014'
-                                            iv_msgty = 'W'
-                                            iv_v1    = ls_request-request_id
-                                            iv_v2    = `20` )
-                    ) TO rs_result-errors.
+      add_request_message( EXPORTING iv_msgno = '014'
+                                     iv_msgty = 'W'
+                                     iv_v1    = ls_request-request_id
+                                     iv_v2    = `20`
+                           CHANGING  cs_result = rs_result ).
     ENDIF.
 
     rs_result-request_id = ls_request-request_id.
 
-    " 3. Prefetch Master Data -----------------------------------------
+    " 5. Prefetch Master Data ------------------------------------------
     prefetch_master_data( ls_request-orders ).
 
     DATA(lt_duplicate_header) = find_duplicate_header( ls_request-orders ).
 
-    " 4. Process -------------------------------------------------------
+    " 6. Process -------------------------------------------------------
     LOOP AT ls_request-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
 
       CLEAR: ls_order,
@@ -305,7 +308,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
              lt_item_pricings[],
              lt_error[].
 
-      " 4.1 Normalize --------------------------------------------------
+      " 6.1 Normalize --------------------------------------------------
       ls_order          = CORRESPONDING #( <lfs_order> ).
       lt_order_pricings = CORRESPONDING #( <lfs_order>-pricings ).
 
@@ -331,9 +334,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       " normalize ล้ม = ไม่มี UUID = เขียน log ไม่ได้ ข้าม order นี้ไปเลย
       IF lt_error IS NOT INITIAL.
         rs_result-failed = rs_result-failed + 1.
-        APPEND to_order_out( is_order = ls_order
-                             it_error = lt_error
-                           ) TO rs_result-orders.
+        APPEND LINES OF to_order_out( is_order = ls_order
+                                      it_error = lt_error ) TO rs_result-orders.
         CONTINUE.
       ENDIF.
 
@@ -360,10 +362,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " 4.2 Raw request of this order ----------------------------------
+      " 6.2 Raw request of this order ----------------------------------
       ls_order-request_body = to_request_body( <lfs_order> ).
 
-      " 4.3 Validate ---------------------------------------------------
+      " 6.3 Validate ---------------------------------------------------
       lt_error = VALUE #( BASE lt_error
                           FOR ls_order_error IN validate_order( is_order   = ls_order
                                                                 it_pricing = lt_order_pricings )
@@ -381,24 +383,21 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                           ( CORRESPONDING #( ls_item_error ) ) ).
       ENDLOOP.
 
-      " 4.4 Post -------------------------------------------------------
-      IF lt_error IS INITIAL.
-        IF post( is_order = ls_order
-                 it_item  = lt_item ) = abap_false.
-
-        APPEND VALUE #( msgno            = '501'
-                        msgty            = 'E'
-                        msgtx            = message_text( iv_msgno = '501'
-                                                         iv_v1    = |{ ls_order-sf_header_id_ref }| )
-                        sf_header_id_ref = ls_order-sf_header_id_ref
-                      ) TO lt_error.
-        ENDIF.
+      " 6.4 Post -------------------------------------------------------
+      IF NOT line_exists( lt_error[ msgty = 'E' ] ).
+        post( EXPORTING it_order_pricing = lt_order_pricings
+                        it_item          = lt_item
+                        it_item_pricing  = lt_item_pricings
+              CHANGING  cs_order         = ls_order
+                        ct_error         = lt_error ).
       ENDIF.
 
-      " 4.5 Status -----------------------------------------------------
-      ls_order-order_status = COND #( WHEN lt_error IS INITIAL THEN 'S' ELSE 'E' ).
+      " 6.5 Status -----------------------------------------------------
+      ls_order-order_status = COND #( WHEN NOT line_exists( lt_error[ msgty = 'E' ] ) THEN 'S'
+                                      WHEN ls_order-sales_order_number IS NOT INITIAL   THEN 'W'
+                                      ELSE 'E' ).
 
-      " 4.6 Save -------------------------------------------------------
+      " 6.6 Save -------------------------------------------------------
       " เขียน log เสมอ แม้ order จะไม่ผ่าน validation — ใบที่พังคือใบที่ต้องดูมากที่สุด
       IF save( is_order         = ls_order
                it_order_pricing = lt_order_pricings
@@ -415,18 +414,22 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " 4.7 Result -----------------------------------------------------
-      IF lt_error IS INITIAL.
+      " 6.7 Result -----------------------------------------------------
+      IF NOT line_exists( lt_error[ msgty = 'E' ] ).
         rs_result-passed = rs_result-passed + 1.
       ELSE.
         rs_result-failed = rs_result-failed + 1.
       ENDIF.
 
-      APPEND to_order_out( is_order = ls_order
-                           it_error = lt_error
-                         ) TO rs_result-orders.
+      APPEND LINES OF to_order_out( is_order = ls_order
+                                    it_error = lt_error ) TO rs_result-orders.
 
     ENDLOOP.
+
+    " 7. Request Status --------------------------------------------------
+    rs_result-status = COND #( WHEN rs_result-passed = 0 THEN 'E'
+                               WHEN rs_result-failed = 0 THEN 'S'
+                               ELSE 'W' ).
 
   ENDMETHOD.
 
@@ -494,24 +497,19 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                              IMPORTING et_range      = cs_param-lr_order_reason ).
 
       CATCH zcx_param INTO DATA(lcx_param).
-        APPEND VALUE #( msgno = '403'
-                        msgty = 'E'
-                        msgtx = message_text( iv_msgno = '403'
-                                              iv_v1    = `ZSDE002`
-                                              iv_v2    = |{ lcx_param->gv_reason }|
-                                              iv_v3    = lcx_param->get_text( ) )
-                      ) TO cs_result-errors.
+        add_request_message( EXPORTING iv_msgno = '403'
+                                       iv_v1    = `ZSDE002`
+                                       iv_v2    = |{ lcx_param->gv_reason }|
+                                       iv_v3    = lcx_param->get_text( )
+                             CHANGING  cs_result = cs_result ).
     ENDTRY.
 
-    " range ว่างไม่ raise exception แต่ทำให้ validation เงียบไปทั้งหมด ต้องดักเอง
     IF cs_param-lr_processtype IS INITIAL.
-      APPEND VALUE #( msgno = '403'
-                      msgty = 'E'
-                      msgtx = message_text( iv_msgno = '403'
-                                            iv_v1    = `PROCESS_TYPE`
-                                            iv_v2    = `*`
-                                            iv_v3    = `range is empty` )
-                    ) TO cs_result-errors.
+      add_request_message( EXPORTING iv_msgno = '403'
+                                     iv_v1    = `PROCESS_TYPE`
+                                     iv_v2    = `*`
+                                     iv_v3    = `range is empty`
+                           CHANGING  cs_result = cs_result ).
     ENDIF.
 
   ENDMETHOD.
@@ -1168,31 +1166,16 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
   METHOD post.
 
-*    DATA:
-*      lt_order_response TYPE tt_order_response,
-*      ls_order_response TYPE ty_order_response,
-*      lt_message        TYPE zcl_zsde002_so_create=>tt_message.
-*
-*    LOOP AT is_request-order ASSIGNING FIELD-SYMBOL(<lfs_order>).
-*
-*      " Generate group index
-**      DATA(lv_idx) = sy-tabix.
-**      IF <lfs_order>-requestid IS INITIAL.
-**        <lfs_order>-requestid = |{ ls_request-requestid }-{ lv_idx }|.
-**      ENDIF.
-*
-*      " Create Sales Order
-*      DATA(ls_result) = zcl_zsde002_so_create=>create( EXPORTING is_request = <lfs_order>
-*                                                                 io_param   = lo_param ).
-*      MOVE-CORRESPONDING ls_result TO ls_order_response.
-*
-*      IF ls_order_response-sales_order_number IS NOT INITIAL.
-*        ev_total_success = ev_total_success + 1.
-*      ELSE.
-*        ev_total_error = ev_total_error + 1.
-*      ENDIF.
-*
-*    ENDLOOP.
+    DATA(ls_result) = NEW zcl_zsde002_so_create( )->create(
+                        is_order         = cs_order
+                        it_order_pricing = it_order_pricing
+                        it_item          = it_item
+                        it_item_pricing  = it_item_pricing
+                        is_param         = gs_param ).
+
+    cs_order-sales_order_number = ls_result-sales_order_number.
+
+    APPEND LINES OF ls_result-errors TO ct_error.
 
   ENDMETHOD.
 
@@ -1214,13 +1197,80 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
             INTO DATE  DATA(lv_date)
                  TIME  DATA(lv_time).
 
-    rs_result = VALUE #( sales_order_number = is_order-sales_order_number
-                         document_type      = is_order-sales_order_type
-                         customer_reference = is_order-customer_reference
-                         sf_header_id_ref   = is_order-sf_header_id_ref
-                         processing_date    = |{ lv_date+6(2) }-{ lv_date+4(2) }-{ lv_date(4) }|
-                         processing_time    = |{ lv_time(2) }:{ lv_time+2(2) }:{ lv_time+4(2) }|
-                         errors             = it_error ).
+    DATA(lv_date_out) = |{ lv_date+6(2) }-{ lv_date+4(2) }-{ lv_date(4) }|.
+    DATA(lv_time_out) = |{ lv_time(2) }:{ lv_time+2(2) }:{ lv_time+4(2) }|.
+
+    " สำเร็จ = มีเลข SO และไม่มี error → 1 แถว
+    IF  is_order-sales_order_number IS NOT INITIAL
+    AND NOT line_exists( it_error[ msgty = 'E' ] ).
+
+      APPEND VALUE #( status             = is_order-order_status
+                      code               = '500'
+                      message            = message_text( iv_msgno = '500'
+                                                         iv_msgty = 'S'
+                                                         iv_v1    = |{ is_order-sales_order_number }| )
+                      sales_order_number = is_order-sales_order_number
+                      document_type      = is_order-sales_order_type
+                      customer_reference = is_order-customer_reference
+                      sf_header_id_ref   = is_order-sf_header_id_ref
+                      processing_date    = lv_date_out
+                      processing_time    = lv_time_out
+                    ) TO rt_result.
+
+      RETURN.
+
+    ENDIF.
+
+    " ไม่สำเร็จ → 1 แถวต่อ 1 error
+    LOOP AT it_error ASSIGNING FIELD-SYMBOL(<lfs_error>) WHERE msgty = 'E'.
+
+      APPEND VALUE #( status             = is_order-order_status
+                      code               = |{ <lfs_error>-msgno }|
+                      message            = <lfs_error>-msgtx
+                      sales_order_number = is_order-sales_order_number
+                      document_type      = is_order-sales_order_type
+                      customer_reference = is_order-customer_reference
+                      sf_header_id_ref   = is_order-sf_header_id_ref
+                      sf_item_id_ref     = <lfs_error>-sf_item_id_ref
+                      processing_date    = lv_date_out
+                      processing_time    = lv_time_out
+                      field              = <lfs_error>-field
+                    ) TO rt_result.
+
+    ENDLOOP.
+
+    " กันเคสที่ไม่สำเร็จแต่ไม่มี error message เลย — ไม่ควรเกิด แต่ถ้าเกิดจะทำให้ order หายจาก response
+    IF rt_result IS INITIAL.
+      APPEND VALUE #( status             = is_order-order_status
+                      code               = '501'
+                      message            = message_text( iv_msgno = '501'
+                                                         iv_v1    = |{ is_order-sf_header_id_ref }| )
+                      sales_order_number = is_order-sales_order_number
+                      document_type      = is_order-sales_order_type
+                      customer_reference = is_order-customer_reference
+                      sf_header_id_ref   = is_order-sf_header_id_ref
+                      processing_date    = lv_date_out
+                      processing_time    = lv_time_out
+                    ) TO rt_result.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD add_request_message.
+
+    APPEND VALUE #( status  = iv_msgty
+                    code    = |{ iv_msgno }|
+                    message = message_text( iv_msgno = iv_msgno
+                                            iv_msgty = iv_msgty
+                                            iv_v1    = iv_v1
+                                            iv_v2    = iv_v2
+                                            iv_v3    = iv_v3 )
+                  ) TO cs_result-orders.
+
+    IF iv_msgty = 'E'.
+      cs_result-status = 'E'.
+    ENDIF.
 
   ENDMETHOD.
 

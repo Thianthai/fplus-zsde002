@@ -84,33 +84,28 @@ CLASS zcl_zsde002_http DEFINITION
 
     " Response Type ----------------------------------------------------
     TYPES:
-      BEGIN OF ty_error,
-        type             TYPE string,
-        code             TYPE string,
-        message          TYPE string,
-        sf_header_id_ref TYPE string,
-        sf_item_id_ref   TYPE string,
-        field            TYPE string,
-      END OF ty_error,
-      tt_error TYPE STANDARD TABLE OF ty_error WITH EMPTY KEY,
-
+      "! 1 แถว = 1 message — order ที่สำเร็จได้ 1 แถว, order ที่พังได้ 1 แถวต่อ 1 error
       BEGIN OF ty_order_out,
+        status             TYPE string,
+        code               TYPE string,
+        message            TYPE string,
         sales_order_number TYPE string,
         document_type      TYPE string,
         customer_reference TYPE string,
         sf_header_id_ref   TYPE string,
+        sf_item_id_ref     TYPE string,
         processing_date    TYPE string,
         processing_time    TYPE string,
-        errors             TYPE tt_error,
+        field              TYPE string,
       END OF ty_order_out,
       tt_order_out TYPE STANDARD TABLE OF ty_order_out WITH EMPTY KEY,
 
       BEGIN OF ty_response,
         request_id TYPE string,
+        status     TYPE string,
+        " เปิดใช้เมื่อ SBPA ต้องการตัวนับ — processor คำนวณไว้ให้อยู่แล้ว
 *        passed     TYPE i,
 *        failed     TYPE i,
-        message    TYPE string,
-*        errors     TYPE tt_error,
         orders     TYPE tt_order_out,
       END OF ty_response.
 
@@ -130,10 +125,6 @@ CLASS zcl_zsde002_http DEFINITION
 
     METHODS set_sample_response_body
       RETURNING VALUE(rs_response) TYPE ty_response.
-
-    METHODS to_json_errors
-      IMPORTING it_error        TYPE zcl_zsde002_processor=>tt_error
-      RETURNING VALUE(rt_error) TYPE tt_error.
 
 ENDCLASS.
 
@@ -180,43 +171,33 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
 
     DATA(ls_result) = NEW zcl_zsde002_processor( )->process( io_http_request->get_text( ) ).
 
-    " For Connection Testing
-    DATA(ls_response) = set_sample_response_body( ).
+    DATA(ls_response) = VALUE ty_response(
+      request_id = |{ ls_result-request_id }|
+      status     = |{ ls_result-status }|
+*      passed     = ls_result-passed
+*      failed     = ls_result-failed
+      orders     = VALUE #( FOR <lfs_order> IN ls_result-orders
+                          ( status             = |{ <lfs_order>-status }|
+                            code               = |ZSDE002/{ <lfs_order>-code }|
+                            message            = <lfs_order>-message
+                            sales_order_number = |{ <lfs_order>-sales_order_number }|
+                            document_type      = |{ <lfs_order>-document_type }|
+                            customer_reference = |{ <lfs_order>-customer_reference }|
+                            sf_header_id_ref   = |{ <lfs_order>-sf_header_id_ref }|
+                            sf_item_id_ref     = |{ <lfs_order>-sf_item_id_ref }|
+                            processing_date    = <lfs_order>-processing_date
+                            processing_time    = <lfs_order>-processing_time
+                            field              = <lfs_order>-field ) ) ).
 
     co_http_response->set_header_field( i_name  = 'Content-Type'
                                         i_value = 'application/json' ).
 
-    co_http_response->set_status( i_code = 200 i_reason = 'OK' ).
+    co_http_response->set_status( i_code   = COND #( WHEN ls_response-status = `E` THEN 400 ELSE 200 )
+                                  i_reason = COND #( WHEN ls_response-status = `E` THEN 'Bad Request' ELSE 'OK' ) ).
 
     co_http_response->set_text( xco_cp_json=>data->from_abap( ls_response
                                 )->apply( VALUE #( ( xco_cp_json=>transformation->underscore_to_pascal_case ) )
                                 )->to_string( ) ).
-
-    " For Functional Testing
-*    DATA(ls_response) = VALUE ty_response( request_id = |{ ls_result-request_id }|
-*                                           passed     = ls_result-passed
-*                                           failed     = ls_result-failed
-*                                           errors     = to_json_errors( ls_result-errors )
-*                                           orders     = VALUE #( FOR <lfs_order> IN ls_result-orders
-*                                                               ( sales_order_number = |{ <lfs_order>-sales_order_number }|
-*                                                                 document_type      = |{ <lfs_order>-document_type }|
-*                                                                 customer_reference = |{ <lfs_order>-customer_reference }|
-*                                                                 sf_header_id_ref   = |{ <lfs_order>-sf_header_id_ref }|
-*                                                                 processing_date    = <lfs_order>-processing_date
-*                                                                 processing_time    = <lfs_order>-processing_time
-*                                                                 errors             = to_json_errors( <lfs_order>-errors ) ) ) ).
-*
-*    co_http_response->set_header_field( i_name  = 'Content-Type'
-*                                        i_value = 'application/json' ).
-*
-*    DATA(lv_failed) = xsdbool( line_exists( ls_response-errors[ type = `E` ] ) ).
-*
-*    co_http_response->set_status( i_code   = COND #( WHEN lv_failed = abap_false THEN 200 ELSE 400 )
-*                                  i_reason = COND #( WHEN lv_failed = abap_false THEN 'OK' ELSE 'Bad Request' ) ).
-*
-*    co_http_response->set_text( xco_cp_json=>data->from_abap( ls_response
-*                                )->apply( VALUE #( ( xco_cp_json=>transformation->underscore_to_pascal_case ) )
-*                                )->to_string( ) ).
 
   ENDMETHOD.
 
@@ -251,40 +232,36 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
   METHOD set_sample_response_body.
 
     rs_response-request_id = '99991231_235959'.
-    rs_response-message    = |3 orders created with 2 orders failed|.
+    rs_response-status     = 'W'.
 
-    DO 5 TIMES.
-      IF sy-index <= 3.
-        APPEND INITIAL LINE TO rs_response-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
-        <lfs_order>-sales_order_number = |900000000{ sy-index }|.
-        <lfs_order>-sf_header_id_ref   = |SfHeaderIdRef-{ sy-index }|.
-      ELSE.
-        APPEND INITIAL LINE TO rs_response-orders ASSIGNING <lfs_order>.
-        <lfs_order>-sf_header_id_ref = |SfHeaderIdRef-{ sy-index }|.
-
-        DO 2 TIMES.
-          APPEND INITIAL LINE TO <lfs_order>-errors ASSIGNING FIELD-SYMBOL(<lfs_order_error>).
-          <lfs_order_error>-sf_header_id_ref = <lfs_order>-sf_header_id_ref.
-          <lfs_order_error>-sf_item_id_ref   = |SfItemIdRef-{ sy-index }|.
-          <lfs_order_error>-message          = |Order item 00000{ sy-index } error|.
-        ENDDO.
-      ENDIF.
+    DO 3 TIMES.
+      APPEND VALUE #( status             = 'S'
+                      code               = 'ZSDE002/500'
+                      message            = |Sales order 900000000{ sy-index } created|
+                      sales_order_number = |900000000{ sy-index }|
+                      document_type      = 'ZOR'
+                      customer_reference = |CustomerReference-{ sy-index }|
+                      sf_header_id_ref   = |SfHeaderIdRef-{ sy-index }|
+                      processing_date    = '31-12-9999'
+                      processing_time    = '23:59:59'
+                    ) TO rs_response-orders.
     ENDDO.
 
-  ENDMETHOD.
+    DO 2 TIMES.
+      DATA(lv_index) = sy-index + 3.
 
-
-  METHOD to_json_errors.
-
-    rt_error = VALUE #( FOR <lfs_error> IN it_error
-                      ( type             = COND #( WHEN <lfs_error>-msgty IS INITIAL
-                                                   THEN `E`
-                                                   ELSE |{ <lfs_error>-msgty }| )
-                        code             = |ZSDE002/{ <lfs_error>-msgno }|
-                        message          = <lfs_error>-msgtx
-                        sf_header_id_ref = <lfs_error>-sf_header_id_ref
-                        sf_item_id_ref   = <lfs_error>-sf_item_id_ref
-                        field            = <lfs_error>-field ) ).
+      APPEND VALUE #( status             = 'E'
+                      code               = 'ZSDE002/100'
+                      message            = |Mandatory field SOLD_TO_PARTY is missing|
+                      document_type      = 'ZOR'
+                      customer_reference = |CustomerReference-{ lv_index }|
+                      sf_header_id_ref   = |SfHeaderIdRef-{ lv_index }|
+                      sf_item_id_ref     = |SfItemIdRef-{ lv_index }|
+                      processing_date    = '31-12-9999'
+                      processing_time    = '23:59:59'
+                      field              = 'SoldToParty'
+                    ) TO rs_response-orders.
+    ENDDO.
 
   ENDMETHOD.
 
