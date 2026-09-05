@@ -5,7 +5,7 @@
    <VSEOCLASS>
     <CLSNAME>ZCL_ZSDE002_JSON</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>Sales Order Creation - JSON Transformation</DESCRIPT>
+    <DESCRIPT>Sales Order Creation - JSON Transform</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>

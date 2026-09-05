@@ -5,7 +5,7 @@
    <VSEOCLASS>
     <CLSNAME>ZCL_ZSDE002_SO_CREATE</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>Sales Order Creation</DESCRIPT>
+    <DESCRIPT>Sales Order Creation - Create Sales Order</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>

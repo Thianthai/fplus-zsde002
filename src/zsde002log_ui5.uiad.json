@@ -1,0 +1,34 @@
+{
+  "formatVersion": "2",
+  "header": {
+    "description": "Interface Log for Sales Order Creation",
+    "originalLanguage": "en",
+    "abapLanguageVersion": "cloudDevelopment"
+  },
+  "generalInformation": {
+    "appType": "ui5",
+    "catalogId": "SAP_TC_ALV5_DEFAULT"
+  },
+  "ui5AppDetails": {
+    "appId": "com.fplus.sd.zsde002log"
+  },
+  "navigation": {
+    "targetMappingId": "ZSDE002LOG_UI5_TM",
+    "semanticObject": "ZSDE002LOG",
+    "action": "manage",
+    "desktop": true,
+    "tablet": true,
+    "phone": true
+  },
+  "tiles": [
+    {
+      "id": "ZSDE002LOG_UI5_AL",
+      "tileType": "static",
+      "standard": {
+        "title": "Interface Log for Sales Order Creation",
+        "subtitle": "ZSDE002",
+        "keywords": "ZSDE002"
+      }
+    }
+  ]
+}

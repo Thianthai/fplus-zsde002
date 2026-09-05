@@ -195,6 +195,11 @@ CLASS zcl_zsde002_processor DEFINITION
       IMPORTING is_order         TYPE zcl_zsde002_http=>ty_order_in
       RETURNING VALUE(rv_result) TYPE ztsd_e002_order-request_body.
 
+    "! จัดรูปแบบ JSON compact ให้ขึ้นบรรทัดและย่อหน้า เพื่อให้อ่านได้ในหน้า monitor
+    METHODS to_pretty_json
+      IMPORTING iv_json          TYPE string
+      RETURNING VALUE(rv_result) TYPE string.
+
     "! แปลง error ของ order เป็นแถวใน ZTSD_E002_ORDMSG
     METHODS to_order_message
       IMPORTING is_order         TYPE ty_order
@@ -255,7 +260,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    IF NOT matches( val = iv_body pcre = '^\s*\{' ).
+    IF NOT contains( val = iv_body pcre = '^\s*\{' ).
       add_request_message( EXPORTING iv_msgno = '011' CHANGING cs_result = rs_result ).
       RETURN.
     ENDIF.
@@ -508,7 +513,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     IF cs_param-t_process_type IS INITIAL.
       add_request_message( EXPORTING iv_msgno = '403'
                                      iv_v1    = `PROCESS_TYPE`
-                                     iv_v2    = `ZTSD_E002_PRCTYP`
+                                     iv_v2    = `ZTSD_PRCS_TY`
                                      iv_v3    = `mapping table is empty`
                            CHANGING  cs_result = cs_result ).
     ENDIF.
@@ -1301,12 +1306,103 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
   METHOD to_request_body.
 
     TRY.
-        rv_result = xco_cp_json=>data->from_abap( is_order
+        rv_result = to_pretty_json( xco_cp_json=>data->from_abap( is_order
                       )->apply( VALUE #( ( xco_cp_json=>transformation->underscore_to_pascal_case ) )
-                      )->to_string( ).
+                      )->to_string( ) ).
       CATCH cx_root.
         CLEAR rv_result.
     ENDTRY.
+
+  ENDMETHOD.
+
+
+  METHOD to_pretty_json.
+
+    " HTML ยุบ space นำหน้าบรรทัดทิ้ง ใช้ non-breaking space แทนเพื่อให้ indent ติดไปด้วย
+*    DATA(lv_nbsp)   = cl_abap_conv_codepage=>create_in( )->convert( CONV xstring( 'C2A0' ) ).
+*    DATA(lc_indent) = lv_nbsp && lv_nbsp.
+    CONSTANTS lc_indent TYPE string VALUE `    `.
+
+    DATA lt_line      TYPE string_table.
+    DATA lv_line      TYPE string.
+    DATA lv_level     TYPE i.
+    DATA lv_in_string TYPE abap_bool.
+    DATA lv_escaped   TYPE abap_bool.
+    DATA lv_off       TYPE i.
+
+    DATA(lv_len) = strlen( iv_json ).
+
+    WHILE lv_off < lv_len.
+
+      DATA(lv_char) = substring( val = iv_json off = lv_off len = 1 ).
+
+      " ---------- อยู่ใน string literal ปล่อยผ่านทุกตัวอักษร ----------
+      IF lv_in_string = abap_true.
+
+        lv_line = lv_line && lv_char.
+
+        IF lv_escaped = abap_true.
+          lv_escaped = abap_false.
+        ELSEIF lv_char = `\`.
+          lv_escaped = abap_true.
+        ELSEIF lv_char = `"`.
+          lv_in_string = abap_false.
+        ENDIF.
+
+        lv_off = lv_off + 1.
+        CONTINUE.
+
+      ENDIF.
+
+      " ---------- นอก string literal ----------
+      CASE lv_char.
+
+        WHEN `"`.
+          lv_in_string = abap_true.
+          lv_line      = lv_line && lv_char.
+
+        WHEN `{` OR `[`.
+
+          DATA(lv_next) = COND string( WHEN lv_off + 1 < lv_len
+                                       THEN substring( val = iv_json off = lv_off + 1 len = 1 ) ).
+
+          " container ว่างเขียนติดกันไปเลย ไม่ต้องเปลืองสองบรรทัด
+          IF ( lv_char = `{` AND lv_next = `}` ) OR ( lv_char = `[` AND lv_next = `]` ).
+            lv_line = lv_line && lv_char && lv_next.
+            lv_off  = lv_off + 2.
+            CONTINUE.
+          ENDIF.
+
+          lv_line = lv_line && lv_char.
+          APPEND lv_line TO lt_line.
+          lv_level = lv_level + 1.
+          lv_line  = repeat( val = lc_indent occ = lv_level ).
+
+        WHEN `}` OR `]`.
+          APPEND lv_line TO lt_line.
+          lv_level = lv_level - 1.
+          lv_line  = repeat( val = lc_indent occ = lv_level ) && lv_char.
+
+        WHEN `,`.
+          lv_line = lv_line && lv_char.
+          APPEND lv_line TO lt_line.
+          lv_line = repeat( val = lc_indent occ = lv_level ).
+
+        WHEN `:`.
+          lv_line = lv_line && lv_char && ` `.
+
+        WHEN OTHERS.
+          lv_line = lv_line && lv_char.
+
+      ENDCASE.
+
+      lv_off = lv_off + 1.
+
+    ENDWHILE.
+
+    APPEND lv_line TO lt_line.
+
+    rv_result = concat_lines_of( table = lt_line sep = |\n| ).
 
   ENDMETHOD.
 

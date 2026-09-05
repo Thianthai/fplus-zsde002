@@ -34,10 +34,15 @@ CLASS zcl_zsde002_so_create DEFINITION
     TYPES ty_amount   TYPE p LENGTH 11 DECIMALS 2.
     TYPES ty_quantity TYPE p LENGTH 13 DECIMALS 3.
 
+    TYPES: BEGIN OF ty_cid_counter,
+             prefix TYPE string,
+             seq    TYPE i,
+           END OF ty_cid_counter.
+
+    DATA gt_cid_counter TYPE HASHED TABLE OF ty_cid_counter WITH UNIQUE KEY prefix.
+
     CONSTANTS gc_cid_header TYPE string    VALUE 'H01'.
     CONSTANTS gc_langu      TYPE spras     VALUE 'E'.
-
-    DATA gv_cid_seq TYPE i.
 
     "! %cid ที่ไม่ซ้ำกันทั้ง request — ของเดิมใช้ค่าคงที่ในลูปทำให้ RAP resolve ไม่ออก
     METHODS next_cid
@@ -64,8 +69,19 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
 
   METHOD next_cid.
 
-    gv_cid_seq = gv_cid_seq + 1.
-    rv_result  = |{ iv_prefix }{ gv_cid_seq }|.
+    FIELD-SYMBOLS <lfs_counter> TYPE ty_cid_counter.
+
+    READ TABLE gt_cid_counter ASSIGNING <lfs_counter>
+         WITH TABLE KEY prefix = iv_prefix.
+
+    IF sy-subrc <> 0.
+      INSERT VALUE #( prefix = iv_prefix
+                      seq    = 0 ) INTO TABLE gt_cid_counter ASSIGNING <lfs_counter>.
+    ENDIF.
+
+    <lfs_counter>-seq = <lfs_counter>-seq + 1.
+
+    rv_result = |{ iv_prefix }{ <lfs_counter>-seq }|.
 
   ENDMETHOD.
 
@@ -129,7 +145,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     DATA ls_itempricing   TYPE STRUCTURE FOR CREATE i_salesorderitemtp\_ItemPricingElement.
     DATA ls_itemtext      TYPE STRUCTURE FOR CREATE i_salesorderitemtp\_ItemText.
 
-    CLEAR gv_cid_seq.
+    CLEAR gt_cid_counter.
 
     " ---------- Header ----------
     " มี original_sales_document → สร้างผ่าน action เท่านั้น

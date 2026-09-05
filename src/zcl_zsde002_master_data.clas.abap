@@ -108,19 +108,15 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
     ENDLOOP.
 
-    SELECT FROM I_SalesArea AS sa
-      INNER JOIN I_CustomerSalesArea AS csa
-        ON  csa~SalesOrganization   = sa~SalesOrganization
-        AND csa~DistributionChannel = sa~DistributionChannel
-        AND csa~Division            = sa~Division
-      FIELDS sa~SalesOrganization,
-             sa~DistributionChannel,
-             sa~Division,
-             csa~Customer
-      WHERE sa~SalesOrganization   IN @lr_sales_organization
-        AND sa~DistributionChannel IN @lr_distribution_channel
-        AND sa~Division            IN @lr_division
-        AND csa~Customer           IN @lr_customer
+    SELECT FROM I_CustomerSalesArea WITH PRIVILEGED ACCESS
+      FIELDS SalesOrganization,
+             DistributionChannel,
+             Division,
+             Customer
+      WHERE SalesOrganization   IN @lr_sales_organization
+        AND DistributionChannel IN @lr_distribution_channel
+        AND Division            IN @lr_division
+        AND Customer            IN @lr_customer
       INTO TABLE @DATA(lt_existing).
 
     LOOP AT it_key ASSIGNING <lfs_key>.
@@ -196,7 +192,7 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
     lr_product = VALUE #( FOR <lfs_for> IN it_key
                         ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
 
-    SELECT FROM I_Product
+    SELECT FROM I_Product WITH PRIVILEGED ACCESS
       FIELDS Product
       WHERE Product IN @lr_product
       INTO TABLE @DATA(lt_existing).
@@ -298,7 +294,7 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
     ENDLOOP.
 
-    SELECT FROM I_ProductUnitsOfMeasure
+    SELECT FROM I_ProductUnitsOfMeasure WITH PRIVILEGED ACCESS
       FIELDS Product,
              AlternativeUnit
       WHERE Product         IN @lr_product

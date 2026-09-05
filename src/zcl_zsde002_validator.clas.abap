@@ -115,17 +115,29 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
 
   METHOD to_internal_material.
 
-    " conversion exit ALPHA ของ MATNR เติมศูนย์ถึง 18 ตัว ไม่ใช่ความยาวของ field (40)
-    " ถ้าประกาศตัวแปรเป็น I_Product-Product แล้ว ALPHA จะเติมศูนย์ยาว 40 ซึ่งผิด
     DATA lv_material TYPE c LENGTH 18.
 
-    IF strlen( iv_value ) > 18.
-      rv_result = iv_value.
+    IF iv_value IS INITIAL.
       RETURN.
     ENDIF.
 
-    lv_material = iv_value.
-    rv_result   = |{ lv_material ALPHA = IN }|.
+    DATA(lv_input) = condense( CONV string( iv_value ) ).
+
+    " ยาวเกิน 18 = extended material number ใช้ค่าดิบตามที่ส่งมา
+    IF strlen( lv_input ) > 18.
+      rv_result = lv_input.
+      RETURN.
+    ENDIF.
+
+    " ไม่ใช่ตัวเลขล้วน = MATNR แบบ alphanumeric ไม่ต้องเติมศูนย์
+    IF NOT matches( val = lv_input pcre = '^\d+$' ).
+      rv_result = lv_input.
+      RETURN.
+    ENDIF.
+
+    " ตัวเลขล้วน → ชิดขวาเติมศูนย์ครบ 18 แล้วย้ายลง CHAR(40) แบบชิดซ้าย
+    lv_material = |{ lv_input WIDTH = 18 ALIGN = RIGHT PAD = '0' }|.
+    rv_result   = lv_material.
 
   ENDMETHOD.
 
