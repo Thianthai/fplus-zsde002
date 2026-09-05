@@ -1319,9 +1319,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
   METHOD to_pretty_json.
 
     " HTML ยุบ space นำหน้าบรรทัดทิ้ง ใช้ non-breaking space แทนเพื่อให้ indent ติดไปด้วย
-*    DATA(lv_nbsp)   = cl_abap_conv_codepage=>create_in( )->convert( CONV xstring( 'C2A0' ) ).
-*    DATA(lc_indent) = lv_nbsp && lv_nbsp.
-    CONSTANTS lc_indent TYPE string VALUE `    `.
+    DATA(lv_nbsp)   = cl_abap_conv_codepage=>create_in( )->convert( CONV xstring( 'C2A0' ) ).
+    DATA(lc_indent) = lv_nbsp && lv_nbsp.
 
     DATA lt_line      TYPE string_table.
     DATA lv_line      TYPE string.
