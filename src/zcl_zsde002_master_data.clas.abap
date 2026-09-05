@@ -13,7 +13,7 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
   METHOD zif_zsde002_master_data~read_process_type.
 
-    SELECT FROM ztsd_e002_prctyp
+    SELECT FROM ztsd_prcs_ty
       FIELDS process_type,
              tran_type,
              sales_order_type,

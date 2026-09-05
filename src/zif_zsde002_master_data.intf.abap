@@ -12,12 +12,12 @@ INTERFACE zif_zsde002_master_data
   TYPES:
     "! Process type mapping — เฉพาะ field ที่ validation ใช้
     BEGIN OF ty_process_type,
-      process_type         TYPE ztsd_e002_prctyp-process_type,
-      tran_type            TYPE ztsd_e002_prctyp-tran_type,
-      sales_order_type     TYPE ztsd_e002_prctyp-sales_order_type,
-      sales_organization   TYPE ztsd_e002_prctyp-sales_organization,
-      distribution_channel TYPE ztsd_e002_prctyp-distribution_channel,
-      division             TYPE ztsd_e002_prctyp-division,
+      process_type         TYPE ztsd_prcs_ty-process_type,
+      tran_type            TYPE ztsd_prcs_ty-tran_type,
+      sales_order_type     TYPE ztsd_prcs_ty-sales_order_type,
+      sales_organization   TYPE ztsd_prcs_ty-sales_organization,
+      distribution_channel TYPE ztsd_prcs_ty-distribution_channel,
+      division             TYPE ztsd_prcs_ty-division,
     END OF ty_process_type,
 
     "! Sales Area

@@ -1,0 +1,5 @@
+@ObjectModel.leadingEntity.name: 'ZI_ProcessTypeMappingD_S'
+define service ZUI_PROCESSTYPEMAPPINGD {
+  expose ZI_PROCESSTYPEMAPPINGD_S as ProcessTypeMappiAll;
+  expose ZI_PROCESSTYPEMAPPINGD as ProcessTypeMappingD;
+}
