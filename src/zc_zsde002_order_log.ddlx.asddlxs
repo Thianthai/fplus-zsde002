@@ -90,7 +90,11 @@ annotate entity ZC_ZSDE002_ORDER_LOG
   }
   OrderStatus;
 
-  @UI.fieldGroup: [{ qualifier: 'AdminData', position: 10 }]
+  @UI: {
+    lineItem:       [{ position: 80, importance: #HIGH }],
+    selectionField: [{ position: 70 }],
+    fieldGroup:     [{ qualifier: 'AdminData', position: 10 }]
+  }
   CreatedAt;
 
   @UI.fieldGroup: [{ qualifier: 'AdminData', position: 20 }]

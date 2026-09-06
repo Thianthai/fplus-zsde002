@@ -45,6 +45,7 @@ define root view entity ZC_ZSDE002_ORDER_LOG
       CustomerPO,
 
       @Search.defaultSearchElement: true
+      @Consumption.semanticObject: 'SalesOrder'
       SalesOrderNumber,
       OrderStatus,
 
