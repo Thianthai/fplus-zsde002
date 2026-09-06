@@ -107,12 +107,6 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
-     <MSGNR>201</MSGNR>
-     <TEXT>Customer &amp;4 is not valid for sales area &amp;1/&amp;2/&amp;3</TEXT>
-    </T100>
-    <T100>
-     <SPRSL>E</SPRSL>
-     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>202</MSGNR>
      <TEXT>Sales document type &amp;1 does not exist</TEXT>
     </T100>
@@ -197,12 +191,6 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
-     <MSGNR>255</MSGNR>
-     <TEXT>Customer material &amp;1 is not assigned to customer &amp;2</TEXT>
-    </T100>
-    <T100>
-     <SPRSL>E</SPRSL>
-     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>300</MSGNR>
      <TEXT>Field &amp;1: date &amp;2 is not a valid date format</TEXT>
     </T100>
@@ -235,12 +223,6 @@
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>400</MSGNR>
      <TEXT>Order log could not be written for &amp;1</TEXT>
-    </T100>
-    <T100>
-     <SPRSL>E</SPRSL>
-     <ARBGB>ZSDE002</ARBGB>
-     <MSGNR>401</MSGNR>
-     <TEXT>Item log could not be written for &amp;1</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>
