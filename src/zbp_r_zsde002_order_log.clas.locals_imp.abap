@@ -11,7 +11,8 @@ CLASS lhc_OrderLog IMPLEMENTATION.
 
   METHOD get_global_authorizations.
 
-    " Log is written by ZCL_ZSDE002_HANDLER only, the UI projection is read-only
+    " Log rows are written by ZCL_ZSDE002_PROCESSOR with direct INSERT.
+    " This projection is read-only: the monitor displays, it never edits.
     IF requested_authorizations-%create = if_abap_behv=>mk-on.
       result-%create = if_abap_behv=>auth-allowed.
     ENDIF.

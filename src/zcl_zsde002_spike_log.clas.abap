@@ -56,7 +56,6 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
 
   METHOD purge_all.
 
-    " the five tables hold nothing but spike data until the handler starts logging
     DELETE FROM ztsd_e002_itmprc.
     DELETE FROM ztsd_e002_ordprc.
     DELETE FROM ztsd_e002_ordmsg.
@@ -298,7 +297,6 @@ CLASS zcl_zsde002_spike_log IMPLEMENTATION.
     DATA(lv_item1_uuid) = new_uuid( ).
     DATA(lv_item2_uuid) = new_uuid( ).
 
-    " ---------- the raw JSON of this one order, exactly as SBPA sends it ----------
     " ---------- the raw JSON of this one order, exactly as SBPA sends it ----------
     DATA(lv_body) = concat_lines_of(
       table = VALUE string_table(
