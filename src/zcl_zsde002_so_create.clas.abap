@@ -169,7 +169,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
                       OrganizationDivision      = is_order-division
                       SoldToParty               = is_order-sold_to_party
                       " EDI / ONLINE ยังไม่ได้กำหนดว่าดึงจาก field ไหน คงเงื่อนไขเดิมไว้ก่อน
-                      PurchaseOrderByCustomer   = COND #( WHEN is_order-process_type IN is_param-lr_processtype_sfid
+                      PurchaseOrderByCustomer   = COND #( WHEN is_order-process_type IN is_param-r_process_type_sfid
                                                           THEN is_order-customer_reference )
                       CustomerPurchaseOrderDate = to_date( is_order-customer_reference_date )
                       SalesOrderDate            = to_date( is_order-document_date )
@@ -177,7 +177,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
                       ShippingCondition         = is_order-shipping_conditions
                       TransactionCurrency       = is_order-currency
                       CustomerPaymentTerms      = is_order-payment_term
-                      SDDocumentReason          = COND #( WHEN is_order-tran_type IN is_param-lr_trantype_reason
+                      SDDocumentReason          = COND #( WHEN is_order-tran_type IN is_param-r_tran_type_reason
                                                           THEN is_order-order_reason )
                     ) TO lt_header.
 
@@ -205,7 +205,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     ENDIF.
 
     IF  is_order-stock_van IS NOT INITIAL
-    AND is_order-process_type IN is_param-lr_processtype_stockvan.
+    AND is_order-process_type IN is_param-r_process_type_stockvan.
       APPEND VALUE #( %cid                   = next_cid( `PA` )
                       PartnerFunctionForEdit = 'SB'          " <-- ยังไม่ยืนยัน ดูหมายเหตุ
                       Customer               = is_order-stock_van ) TO ls_partner-%target.
@@ -240,14 +240,14 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     APPEND VALUE #( %cid              = next_cid( `HT` )
                     LanguageForEdit   = gc_langu
                     LongTextIDForEdit = 'ZT01'
-                    LongText          = COND #( WHEN is_order-process_type IN is_param-lr_processtype_zt01
+                    LongText          = COND #( WHEN is_order-process_type IN is_param-r_process_type_zt01
                                                 THEN is_order-payment_transaction_reference )
                   ) TO ls_headertext-%target.
 
     APPEND VALUE #( %cid              = next_cid( `HT` )
                     LanguageForEdit   = gc_langu
                     LongTextIDForEdit = 'ZT02'
-                    LongText          = COND #( WHEN is_order-process_type IN is_param-lr_processtype_zt02
+                    LongText          = COND #( WHEN is_order-process_type IN is_param-r_process_type_zt02
                                                 THEN is_order-tax_document_no )
                   ) TO ls_headertext-%target.
 
@@ -260,7 +260,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     APPEND VALUE #( %cid              = next_cid( `HT` )
                     LanguageForEdit   = gc_langu
                     LongTextIDForEdit = 'ZT04'
-                    LongText          = COND #( WHEN is_order-order_reason IN is_param-lr_order_reason
+                    LongText          = COND #( WHEN is_order-order_reason IN is_param-r_order_reason_zt04
                                                 THEN is_order-order_reason_text )
                   ) TO ls_headertext-%target.
 
@@ -290,9 +290,9 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
                       RequestedQuantity      = to_quantity( <lfs_item>-requested_quantity )
                       RequestedQuantityUnit  = <lfs_item>-sales_unit
                       Plant                  = <lfs_item>-plant
-                      StorageLocation        = COND #( WHEN is_order-process_type IN is_param-lr_processtype_sloc
+                      StorageLocation        = COND #( WHEN is_order-process_type IN is_param-r_process_type_sloc
                                                        THEN <lfs_item>-storage_location )
-                      Batch                  = COND #( WHEN is_order-process_type IN is_param-lr_processtype_batch
+                      Batch                  = COND #( WHEN is_order-process_type IN is_param-r_process_type_batch
                                                        THEN <lfs_item>-batch )
                       Route                  = <lfs_item>-route
                     ) TO ls_item-%target.
@@ -341,7 +341,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
       APPEND VALUE #( %cid              = next_cid( `IX` )
                       LanguageForEdit   = gc_langu
                       LongTextIDForEdit = 'ZT09'
-                      LongText          = COND #( WHEN is_order-process_type IN is_param-lr_processtype_sfid
+                      LongText          = COND #( WHEN is_order-process_type IN is_param-r_process_type_sfid
                                                   THEN <lfs_item>-sf_item_id_ref )
                     ) TO ls_itemtext-%target.
 

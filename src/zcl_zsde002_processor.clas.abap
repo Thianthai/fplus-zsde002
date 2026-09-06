@@ -61,17 +61,18 @@ CLASS zcl_zsde002_processor DEFINITION
 
       BEGIN OF ty_param,
         t_process_type          TYPE zif_zsde002_master_data=>tt_process_type,
-        lr_processtype_stockvan TYPE RANGE OF ty_order-process_type,
-        lr_processtype_sfid     TYPE RANGE OF ty_order-process_type,
-        lr_processtype_edi      TYPE RANGE OF ty_order-process_type,
-        lr_processtype_online   TYPE RANGE OF ty_order-process_type,
-        lr_processtype_zt01     TYPE RANGE OF ty_order-process_type,
-        lr_processtype_zt02     TYPE RANGE OF ty_order-process_type,
-        lr_processtype_zt09     TYPE RANGE OF ty_order-process_type,
-        lr_processtype_sloc     TYPE RANGE OF ty_order-process_type,
-        lr_processtype_batch    TYPE RANGE OF ty_order-process_type,
-        lr_trantype_reason      TYPE RANGE OF ty_order-tran_type,
-        lr_order_reason         TYPE RANGE OF I_SalesDocument-SDDocumentReason,
+        r_process_type_stockvan TYPE RANGE OF ty_order-process_type,
+        r_process_type_sfid     TYPE RANGE OF ty_order-process_type,
+        r_process_type_edi      TYPE RANGE OF ty_order-process_type,
+        r_process_type_online   TYPE RANGE OF ty_order-process_type,
+        r_process_type_zt01     TYPE RANGE OF ty_order-process_type,
+        r_process_type_zt02     TYPE RANGE OF ty_order-process_type,
+        r_process_type_zt09     TYPE RANGE OF ty_order-process_type,
+        r_process_type_sloc     TYPE RANGE OF ty_order-process_type,
+        r_process_type_batch    TYPE RANGE OF ty_order-process_type,
+        r_tran_type_reason      TYPE RANGE OF ty_order-tran_type,
+        r_order_reason          TYPE RANGE OF I_SalesDocument-SDDocumentReason,
+        r_order_reason_zt04     TYPE RANGE OF I_SalesDocument-SDDocumentReason,
       END OF ty_param,
 
       "! ผลการเช็ค master data ของทั้ง request — เก็บเฉพาะ key ที่ "ไม่เจอ"
@@ -478,57 +479,62 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'CASH_VAN_SALES'
-                             IMPORTING et_range      = cs_param-lr_processtype_stockvan ).
+                             IMPORTING et_range      = cs_param-r_process_type_stockvan ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'SFID'
-                             IMPORTING et_range      = cs_param-lr_processtype_sfid ).
+                             IMPORTING et_range      = cs_param-r_process_type_sfid ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'EDI'
-                             IMPORTING et_range      = cs_param-lr_processtype_edi ).
+                             IMPORTING et_range      = cs_param-r_process_type_edi ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'ONLINE'
-                             IMPORTING et_range      = cs_param-lr_processtype_online ).
+                             IMPORTING et_range      = cs_param-r_process_type_online ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'ZT01'
-                             IMPORTING et_range      = cs_param-lr_processtype_zt01 ).
+                             IMPORTING et_range      = cs_param-r_process_type_zt01 ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'ZT02'
-                             IMPORTING et_range      = cs_param-lr_processtype_zt02 ).
+                             IMPORTING et_range      = cs_param-r_process_type_zt02 ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'ZT09'
-                             IMPORTING et_range      = cs_param-lr_processtype_zt09 ).
+                             IMPORTING et_range      = cs_param-r_process_type_zt09 ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'SLOC'
-                             IMPORTING et_range      = cs_param-lr_processtype_sloc ).
+                             IMPORTING et_range      = cs_param-r_process_type_sloc ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'PROCESS_TYPE'
                                        iv_param_ext  = 'BATCH'
-                             IMPORTING et_range      = cs_param-lr_processtype_batch ).
+                             IMPORTING et_range      = cs_param-r_process_type_batch ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'TRAN_TYPE'
                                        iv_param_ext  = 'REASON'
-                             IMPORTING et_range      = cs_param-lr_trantype_reason ).
+                             IMPORTING et_range      = cs_param-r_tran_type_reason ).
+
+        io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
+                                       iv_param_name = 'ORDER_REASON'
+                                       iv_param_ext  = 'MASTER'
+                             IMPORTING et_range      = cs_param-r_order_reason ).
 
         io_param->get_range( EXPORTING iv_app_id     = 'SDE002'
                                        iv_param_name = 'ORDER_REASON'
                                        iv_param_ext  = 'ZT04'
-                             IMPORTING et_range      = cs_param-lr_order_reason ).
+                             IMPORTING et_range      = cs_param-r_order_reason_zt04 ).
 
       CATCH zcx_param INTO DATA(lcx_param).
         add_request_message( EXPORTING iv_msgno = '403'
@@ -547,6 +553,16 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                                      iv_v1    = `PROCESS_TYPE`
                                      iv_v2    = `ZTSD_PRCS_TY`
                                      iv_v3    = `mapping table is empty`
+                           CHANGING  cs_result = cs_result ).
+    ENDIF.
+
+    " master ว่าง = 304 จะปฏิเสธทุกใบที่ส่ง order reason มา
+    " แจ้งเป็นปัญหา config ตั้งแต่ต้นดีกว่าปล่อยให้ order ตกทีละใบด้วยข้อความที่ไม่ได้บอกสาเหตุจริง
+    IF cs_param-r_order_reason IS INITIAL.
+      add_request_message( EXPORTING iv_msgno = '403'
+                                     iv_v1    = `ORDER_REASON`
+                                     iv_v2    = `MASTER`
+                                     iv_v3    = `parameter has no value`
                            CHANGING  cs_result = cs_result ).
     ENDIF.
 
@@ -729,7 +745,20 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDIF.
 
-    " 4. Validate Master Data ------------------------------------------
+    " 4. Validate Order Reason -----------------------------------------
+    " order reason ต้องอยู่ในชุดที่ config ไว้ที่ ORDER_REASON/MASTER
+    IF  is_order-order_reason IS NOT INITIAL
+    AND is_order-order_reason NOT IN gs_param-r_order_reason.
+      APPEND VALUE #( msgno            = '304'
+                      msgty            = 'E'
+                      msgtx            = message_text( iv_msgno = '304'
+                                                       iv_v1    = |{ is_order-order_reason }| )
+                      sf_header_id_ref = is_order-sf_header_id_ref
+                      field            = zcl_zsde002_json=>to_json_name( 'order_reason' )
+                    ) TO rt_error.
+    ENDIF.
+
+    " 5. Validate Master Data ------------------------------------------
     APPEND LINES OF check_order_master_data( is_order   = is_order
                                              it_pricing = it_pricing
                                            ) TO rt_error.

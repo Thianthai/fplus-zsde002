@@ -182,7 +182,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
       CASE lv_field.
 
         WHEN 'STOCK_VAN'.
-          IF is_order-process_type IN is_param-lr_processtype_stockvan.
+          IF is_order-process_type IN is_param-r_process_type_stockvan.
             APPEND VALUE #( msgno = '101'
                             msgty = 'E'
                             msgv1 = lv_field
@@ -191,7 +191,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
           ENDIF.
 
         WHEN 'PAYMENT_TRANSACTION_REFERENCE'.
-          IF is_order-process_type IN is_param-lr_processtype_zt01.
+          IF is_order-process_type IN is_param-r_process_type_zt01.
             APPEND VALUE #( msgno = '101'
                             msgty = 'E'
                             msgv1 = lv_field
@@ -200,7 +200,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
           ENDIF.
 
         WHEN 'TAX_DOCUMENT_NO'.
-          IF is_order-process_type IN is_param-lr_processtype_zt02.
+          IF is_order-process_type IN is_param-r_process_type_zt02.
             APPEND VALUE #( msgno = '101'
                             msgty = 'E'
                             msgv1 = lv_field
@@ -209,7 +209,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
           ENDIF.
 
         WHEN 'ORDER_REASON'.
-          IF is_order-tran_type IN is_param-lr_trantype_reason.
+          IF is_order-tran_type IN is_param-r_tran_type_reason.
             APPEND VALUE #( msgno = '102'
                             msgty = 'E'
                             msgv1 = lv_field
@@ -218,7 +218,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
           ENDIF.
 
         WHEN 'ORDER_REASON_TEXT'.
-          IF is_order-order_reason IN is_param-lr_order_reason.
+          IF is_order-order_reason IN is_param-r_order_reason_zt04.
             APPEND VALUE #( msgno = '103'
                             msgty = 'E'
                             msgv1 = lv_field
@@ -267,7 +267,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
           ENDIF.
 
         WHEN 'STORAGE_LOCATION'.
-          IF is_order-process_type IN is_param-lr_processtype_sloc.
+          IF is_order-process_type IN is_param-r_process_type_sloc.
             APPEND VALUE #( msgno = '150'
                             msgty = 'E'
                             msgv1 = lv_item
@@ -276,7 +276,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
           ENDIF.
 
         WHEN 'BATCH'.
-          IF is_order-process_type IN is_param-lr_processtype_batch.
+          IF is_order-process_type IN is_param-r_process_type_batch.
             APPEND VALUE #( msgno = '150'
                             msgty = 'E'
                             msgv1 = lv_item
@@ -285,7 +285,7 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
           ENDIF.
 
         WHEN 'SF_ITEM_ID_REF'.
-          IF is_order-process_type IN is_param-lr_processtype_sfid.
+          IF is_order-process_type IN is_param-r_process_type_sfid.
             APPEND VALUE #( msgno = '150'
                             msgty = 'E'
                             msgv1 = lv_item
