@@ -107,6 +107,12 @@ CLASS zcl_zsde002_processor DEFINITION
 
   PRIVATE SECTION.
 
+    " ProcessingDate / ProcessingTime มีไว้ให้คนไล่ปัญหา ต้องตรงกับเวลาบนนาฬิกาคนอ่าน
+    " fix ไว้ในโค้ดเพราะระบบนี้ใช้ในไทยที่เดียว และ user time zone ฝั่ง ABAP เชื่อไม่ได้ —
+    " ค่าใน Fiori Settings เป็น frontend personalization ที่ UI ใช้แปลงตอน render เท่านั้น
+    " cl_abap_context_info=>get_user_time_zone( ) คืน UTC แม้ user จะตั้ง Asia/Bangkok ไว้แล้ว
+    CONSTANTS gc_time_zone TYPE timezone VALUE 'THA'.
+
     DATA go_master_data TYPE REF TO zif_zsde002_master_data.
     DATA go_param       TYPE REF TO zcl_param.
     DATA gs_param       TYPE ty_param.
@@ -1204,18 +1210,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
   METHOD to_order_out.
 
-    TRY.
-        DATA(lv_tzone) = cl_abap_context_info=>get_user_time_zone( ).
-      CATCH cx_abap_context_info_error.
-        CLEAR lv_tzone.
-    ENDTRY.
-
-    IF lv_tzone IS INITIAL.
-      lv_tzone = 'UTC'.
-    ENDIF.
-
     CONVERT TIME STAMP is_order-created_at
-            TIME ZONE  lv_tzone
+            TIME ZONE  gc_time_zone
             INTO DATE  DATA(lv_date)
                  TIME  DATA(lv_time).
 
