@@ -356,7 +356,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     ENDIF.
 
     " ---------- Create ----------
-    MODIFY ENTITIES OF i_salesordertp
+    MODIFY ENTITIES OF i_salesordertp PRIVILEGED
       ENTITY SalesOrder
         EXECUTE createwithreference
           FIELDS ( SalesDocumentType
