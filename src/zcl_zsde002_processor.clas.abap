@@ -118,7 +118,9 @@ CLASS zcl_zsde002_processor DEFINITION
     " fix ไว้ในโค้ดเพราะระบบนี้ใช้ในไทยที่เดียว และ user time zone ฝั่ง ABAP เชื่อไม่ได้ —
     " ค่าใน Fiori Settings เป็น frontend personalization ที่ UI ใช้แปลงตอน render เท่านั้น
     " cl_abap_context_info=>get_user_time_zone( ) คืน UTC แม้ user จะตั้ง Asia/Bangkok ไว้แล้ว
-    CONSTANTS gc_time_zone TYPE timezone VALUE 'THA'.
+    " ใช้ UTC+7 เพราะเป็น ID เดียวที่มีอยู่จริงบน tenant นี้ — THA / BANGKOK / INDCH
+    " ทำให้ CONVERT TIME STAMP คืน sy-subrc 8 แบบเงียบๆ แล้วได้วันที่เป็นศูนย์
+    CONSTANTS gc_time_zone TYPE timezone VALUE 'UTC+7'.
 
     DATA go_master_data   TYPE REF TO zif_zsde002_master_data.
     DATA go_param         TYPE REF TO zcl_param.
