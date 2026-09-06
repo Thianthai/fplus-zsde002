@@ -102,7 +102,7 @@
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>201</MSGNR>
-     <TEXT>Customer &amp;4 is not assigned to sales area &amp;1/&amp;2/&amp;3</TEXT>
+     <TEXT>Customer &amp;4 is not valid for sales area &amp;1/&amp;2/&amp;3</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>
@@ -131,6 +131,36 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>206</MSGNR>
+     <TEXT>Sold-to Party &amp;4 is not valid for sales area &amp;1/&amp;2/&amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>207</MSGNR>
+     <TEXT>Ship-to Party &amp;4 is not valid for sales area &amp;1/&amp;2/&amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>208</MSGNR>
+     <TEXT>Bill-to Party &amp;4 is not valid for sales area &amp;1/&amp;2/&amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>209</MSGNR>
+     <TEXT>Payer Party &amp;4 is not valid for sales area &amp;1/&amp;2/&amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>210</MSGNR>
+     <TEXT>Stock Van &amp;4 is not valid for sales area &amp;1/&amp;2/&amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>250</MSGNR>
      <TEXT>Material &amp;1 does not exist</TEXT>
     </T100>
@@ -144,13 +174,13 @@
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>252</MSGNR>
-     <TEXT>Storage location &amp;1 does not exist in plant &amp;2</TEXT>
+     <TEXT>Storage location &amp;1 is not valid for plant &amp;2</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>253</MSGNR>
-     <TEXT>Unit &amp;2 is not defined for material &amp;1</TEXT>
+     <TEXT>Sales unit &amp;2 is not valid for material &amp;1</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>
@@ -168,7 +198,7 @@
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>300</MSGNR>
-     <TEXT>Field &amp;1: date &amp;2 has an invalid format</TEXT>
+     <TEXT>Field &amp;1: date &amp;2 is not a valid date format</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>
@@ -216,7 +246,7 @@
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>403</MSGNR>
-     <TEXT>Constant parameter &amp;1/&amp;2 could not be read: &amp;3</TEXT>
+     <TEXT>Constant parameter &amp;1 could not be read: &amp;2 (&amp;3)</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>
