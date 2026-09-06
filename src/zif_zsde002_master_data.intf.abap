@@ -7,7 +7,8 @@ INTERFACE zif_zsde002_master_data
     ty_product             TYPE I_Product-Product,
     ty_plant               TYPE I_Plant-Plant,
     ty_condition_type      TYPE I_ConditionType-ConditionType,
-    ty_currency            TYPE I_Currency-Currency.
+    ty_currency            TYPE I_Currency-Currency,
+    ty_customer_reference  TYPE I_SalesOrder-PurchaseOrderByCustomer.
 
   TYPES:
     "! Process type mapping — เฉพาะ field ที่ validation ใช้
@@ -68,12 +69,21 @@ INTERFACE zif_zsde002_master_data
     tt_sales_area          TYPE SORTED TABLE OF ty_sales_area
                            WITH UNIQUE KEY sales_organization distribution_channel division,
     tt_cust_sales_area     TYPE SORTED TABLE OF ty_cust_sales_area
-                           WITH UNIQUE KEY sales_organization distribution_channel division customer.
+                           WITH UNIQUE KEY sales_organization distribution_channel division customer,
+    tt_customer_reference  TYPE SORTED TABLE OF ty_customer_reference
+                           WITH UNIQUE KEY table_line.
 
   "! อ่าน process type mapping ทั้งใบ — ต่างจาก find_unknown_* ตรงที่คืนทุกแถว
   "! ไม่ใช่เฉพาะที่หาไม่เจอ เพราะ validation ต้องเทียบค่าใน row ไม่ใช่แค่เช็คว่ามีอยู่
   METHODS read_process_type
     RETURNING VALUE(rt_result) TYPE tt_process_type.
+
+  "! คืน Customer Reference ที่ถูกใช้สร้าง sales order ไปแล้ว
+  "! ตรงข้ามกับ find_unknown_* — คืน "ตัวที่เจอ" ไม่ใช่ "ตัวที่ไม่เจอ"
+  "! เพราะกฎคือ reference หนึ่งตัวสร้าง SO ได้ครั้งเดียว
+  METHODS read_used_customer_ref
+    IMPORTING it_key           TYPE tt_customer_reference
+    RETURNING VALUE(rt_result) TYPE tt_customer_reference.
 
   METHODS find_unknown_sales_area
     IMPORTING it_key           TYPE tt_sales_area

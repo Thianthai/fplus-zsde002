@@ -86,7 +86,13 @@ CLASS zcl_zsde002_processor DEFINITION
         storage_location    TYPE zif_zsde002_master_data=>tt_storage_location,
         product_unit        TYPE zif_zsde002_master_data=>tt_product_unit,
         condition_type      TYPE zif_zsde002_master_data=>tt_condition_type,
-      END OF ty_unknown.
+      END OF ty_unknown,
+
+      "! ผลการเช็คของทั้ง request — เก็บเฉพาะค่าที่ "ถูกใช้ไปแล้ว"
+      "! ตรงข้ามกับ ty_unknown ที่เก็บค่าที่ "ไม่เจอ"
+      BEGIN OF ty_used,
+        cust_ref TYPE zif_zsde002_master_data=>tt_customer_reference,
+      END OF ty_used.
 
     METHODS constructor
       IMPORTING io_master_data TYPE REF TO zif_zsde002_master_data OPTIONAL
@@ -113,10 +119,11 @@ CLASS zcl_zsde002_processor DEFINITION
     " cl_abap_context_info=>get_user_time_zone( ) คืน UTC แม้ user จะตั้ง Asia/Bangkok ไว้แล้ว
     CONSTANTS gc_time_zone TYPE timezone VALUE 'THA'.
 
-    DATA go_master_data TYPE REF TO zif_zsde002_master_data.
-    DATA go_param       TYPE REF TO zcl_param.
-    DATA gs_param       TYPE ty_param.
-    DATA gs_unknown     TYPE ty_unknown.
+    DATA go_master_data   TYPE REF TO zif_zsde002_master_data.
+    DATA go_param         TYPE REF TO zcl_param.
+    DATA gs_param         TYPE ty_param.
+    DATA gs_unknown       TYPE ty_unknown.
+    DATA gs_used          TYPE ty_used.
 
     METHODS get_constant_param
       IMPORTING io_param  TYPE REF TO zcl_param
@@ -161,9 +168,9 @@ CLASS zcl_zsde002_processor DEFINITION
                 it_pricing      TYPE tt_item_pricing
       RETURNING VALUE(rt_error) TYPE tt_error.
 
-    "! คืน SfHeaderIdRef ที่ซ้ำกันภายใน request เดียว
-    METHODS find_duplicate_header
-      IMPORTING it_order         TYPE zcl_zsde002_http=>tt_order_in
+    "! คืนค่าที่ปรากฏซ้ำภายใน request เดียว — ใช้ทั้ง SfHeaderIdRef และ CustomerReference
+    METHODS find_duplicate_value
+      IMPORTING it_value         TYPE string_table
       RETURNING VALUE(rt_result) TYPE string_table.
 
     METHODS save
@@ -306,7 +313,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     " 5. Prefetch Master Data ------------------------------------------
     prefetch_master_data( ls_request-orders ).
 
-    DATA(lt_duplicate_header) = find_duplicate_header( ls_request-orders ).
+    DATA(lt_duplicate_header) = find_duplicate_value(
+      VALUE #( FOR <lfs_dup_hdr> IN ls_request-orders ( <lfs_dup_hdr>-sf_header_id_ref ) ) ).
+
+    DATA(lt_duplicate_cust_ref) = find_duplicate_value(
+      VALUE #( FOR <lfs_dup_ref> IN ls_request-orders ( <lfs_dup_ref>-customer_reference ) ) ).
 
     " 6. Process -------------------------------------------------------
     LOOP AT ls_request-orders ASSIGNING FIELD-SYMBOL(<lfs_order>).
@@ -363,6 +374,20 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                                                          iv_v1    = |{ ls_order-sf_header_id_ref }| )
                         sf_header_id_ref = ls_order-sf_header_id_ref
                         field            = zcl_zsde002_json=>to_json_name( 'sf_header_id_ref' )
+                      ) TO lt_error.
+      ENDIF.
+
+      " Duplicate CustomerReference — ซ้ำกันเองใน request หรือเคยสร้าง SO ไปแล้ว
+      " ใช้ message เดียวกันทั้งสองกรณี เพราะผลลัพธ์สำหรับ SBPA เหมือนกันคือ transaction นี้ซ้ำ
+      IF  ls_order-customer_reference IS NOT INITIAL
+      AND (    line_exists( lt_duplicate_cust_ref[ table_line = |{ ls_order-customer_reference }| ] )
+            OR line_exists( gs_used-cust_ref[ table_line = ls_order-customer_reference ] ) ).
+        APPEND VALUE #( msgno            = '017'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '017'
+                                                         iv_v1    = |{ ls_order-customer_reference }| )
+                        sf_header_id_ref = ls_order-sf_header_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'customer_reference' )
                       ) TO lt_error.
       ENDIF.
 
@@ -751,6 +776,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     DATA lt_storage_location    TYPE zif_zsde002_master_data=>tt_storage_location.
     DATA lt_product_unit        TYPE zif_zsde002_master_data=>tt_product_unit.
     DATA lt_condition_type      TYPE zif_zsde002_master_data=>tt_condition_type.
+    DATA lt_customer_reference  TYPE zif_zsde002_master_data=>tt_customer_reference.
 
     DATA lv_sales_doc_type      TYPE zif_zsde002_master_data=>ty_sales_document_type.
     DATA lv_payment_terms       TYPE zif_zsde002_master_data=>ty_payment_terms.
@@ -758,10 +784,18 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     DATA lv_plant               TYPE zif_zsde002_master_data=>ty_plant.
     DATA lv_condition_type      TYPE zif_zsde002_master_data=>ty_condition_type.
     DATA lv_material            TYPE zif_zsde002_master_data=>ty_product.
+    DATA lv_customer_reference  TYPE zif_zsde002_master_data=>ty_customer_reference.
 
     CLEAR gs_unknown.
+    CLEAR gs_used.
 
     LOOP AT it_order ASSIGNING FIELD-SYMBOL(<lfs_order>).
+
+      " Customer Reference
+      IF <lfs_order>-customer_reference IS NOT INITIAL.
+        lv_customer_reference = <lfs_order>-customer_reference.
+        INSERT lv_customer_reference INTO TABLE lt_customer_reference.
+      ENDIF.
 
       " Sales Area + Customer Sales Area
       IF  <lfs_order>-sales_organization   IS NOT INITIAL
@@ -852,7 +886,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDLOOP.
 
-    " 10 SELECT ต่อ 1 request
+    " 11 SELECT ต่อ 1 request
+    " กลุ่ม unknown คืนค่าที่ไม่มีอยู่จริงในระบบ
     gs_unknown-sales_area          = go_master_data->find_unknown_sales_area( lt_sales_area ).
     gs_unknown-cust_sales_area     = go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ).
     gs_unknown-sales_document_type = go_master_data->find_unknown_sales_doc_type( lt_sales_document_type ).
@@ -864,6 +899,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     gs_unknown-product_unit        = go_master_data->find_unknown_product_unit( lt_product_unit ).
     gs_unknown-condition_type      = go_master_data->find_unknown_condition_type( lt_condition_type ).
 
+    " กลุ่ม used คืนค่าที่มีอยู่แล้วในระบบ
+    gs_used-cust_ref               = go_master_data->read_used_customer_ref( lt_customer_reference ).
+
   ENDMETHOD.
 
 
@@ -874,6 +912,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
              customer TYPE zif_zsde002_master_data=>ty_cust_sales_area-customer,
              value    TYPE string,
              field    TYPE string,
+             msgno    TYPE symsgno,
            END OF ty_partner.
 
     DATA lt_partner        TYPE STANDARD TABLE OF ty_partner WITH EMPTY KEY.
@@ -905,31 +944,36 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       IF is_order-sold_to_party IS NOT INITIAL.
         APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-sold_to_party )
                         value    = |{ is_order-sold_to_party }|
-                        field    = `sold_to_party` ) TO lt_partner.
+                        field    = `sold_to_party`
+                        msgno    = '206' ) TO lt_partner.
       ENDIF.
 
       IF is_order-ship_to_party IS NOT INITIAL.
         APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-ship_to_party )
                         value    = |{ is_order-ship_to_party }|
-                        field    = `ship_to_party` ) TO lt_partner.
+                        field    = `ship_to_party`
+                        msgno    = '207' ) TO lt_partner.
       ENDIF.
 
       IF is_order-bill_to_party IS NOT INITIAL.
         APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-bill_to_party )
                         value    = |{ is_order-bill_to_party }|
-                        field    = `bill_to_party` ) TO lt_partner.
+                        field    = `bill_to_party`
+                        msgno    = '208' ) TO lt_partner.
       ENDIF.
 
       IF is_order-payer IS NOT INITIAL.
         APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-payer )
                         value    = |{ is_order-payer }|
-                        field    = `payer` ) TO lt_partner.
+                        field    = `payer`
+                        msgno    = '209' ) TO lt_partner.
       ENDIF.
 
       IF is_order-stock_van IS NOT INITIAL.
         APPEND VALUE #( customer = zcl_zsde002_validator=>to_internal_customer( is_order-stock_van )
                         value    = |{ is_order-stock_van }|
-                        field    = `stock_van` ) TO lt_partner.
+                        field    = `stock_van`
+                        msgno    = '210' ) TO lt_partner.
       ENDIF.
 
       LOOP AT lt_partner ASSIGNING FIELD-SYMBOL(<lfs_partner>).
@@ -937,9 +981,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                                                     distribution_channel = is_order-distribution_channel
                                                     division             = is_order-division
                                                     customer             = <lfs_partner>-customer ] ).
-          APPEND VALUE #( msgno            = '201'
+          APPEND VALUE #( msgno            = <lfs_partner>-msgno
                           msgty            = 'E'
-                          msgtx            = message_text( iv_msgno = '201'
+                          msgtx            = message_text( iv_msgno = <lfs_partner>-msgno
                                                            iv_v1    = |{ is_order-sales_organization }|
                                                            iv_v2    = |{ is_order-distribution_channel }|
                                                            iv_v3    = |{ is_order-division }|
@@ -1123,20 +1167,20 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD find_duplicate_header.
+  METHOD find_duplicate_value.
 
     DATA lt_seen TYPE string_table.
 
-    LOOP AT it_order ASSIGNING FIELD-SYMBOL(<lfs_order>).
+    LOOP AT it_value ASSIGNING FIELD-SYMBOL(<lfs_value>).
 
-      CHECK <lfs_order>-sf_header_id_ref IS NOT INITIAL.
+      CHECK <lfs_value> IS NOT INITIAL.
 
-      IF line_exists( lt_seen[ table_line = <lfs_order>-sf_header_id_ref ] ).
-        IF NOT line_exists( rt_result[ table_line = <lfs_order>-sf_header_id_ref ] ).
-          APPEND <lfs_order>-sf_header_id_ref TO rt_result.
+      IF line_exists( lt_seen[ table_line = <lfs_value> ] ).
+        IF NOT line_exists( rt_result[ table_line = <lfs_value> ] ).
+          APPEND <lfs_value> TO rt_result.
         ENDIF.
       ELSE.
-        APPEND <lfs_order>-sf_header_id_ref TO lt_seen.
+        APPEND <lfs_value> TO lt_seen.
       ENDIF.
 
     ENDLOOP.

@@ -24,6 +24,34 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
   ENDMETHOD.
 
+  METHOD zif_zsde002_master_data~read_used_customer_ref.
+
+    CONSTANTS lc_fully_rejected TYPE I_SalesOrder-OverallSDDocumentRejectionSts VALUE 'C'.
+
+    DATA lr_customer_reference TYPE RANGE OF zif_zsde002_master_data=>ty_customer_reference.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    lr_customer_reference = VALUE #( FOR <lfs_for> IN it_key
+                                   ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+
+    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่าน sales order
+    " อ่านเพื่อเช็คว่า reference เคยถูกใช้แล้วหรือยังเท่านั้น ไม่ได้ส่งข้อมูลกลับไปให้ผู้เรียก
+    " ใบที่ถูก reject ทั้งใบไม่นับว่าเคยใช้ SBPA จะได้ยิงซ้ำเพื่อแก้ของที่ผิดได้
+    SELECT FROM I_SalesOrder WITH PRIVILEGED ACCESS
+      FIELDS DISTINCT PurchaseOrderByCustomer
+      WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
+        AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
+      INTO TABLE @DATA(lt_used).
+
+    LOOP AT lt_used ASSIGNING FIELD-SYMBOL(<lfs_used>).
+      INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
+    ENDLOOP.
+
+  ENDMETHOD.
+
   METHOD zif_zsde002_master_data~find_unknown_sales_area.
 
     DATA lr_sales_organization   TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-sales_organization.

@@ -59,6 +59,12 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>017</MSGNR>
+     <TEXT>Duplicate transaction found for customer reference &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>100</MSGNR>
      <TEXT>Mandatory field &amp;1 is missing</TEXT>
     </T100>
