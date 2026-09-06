@@ -44,7 +44,9 @@ CLASS zcl_zsde002_so_create DEFINITION
     CONSTANTS gc_cid_header TYPE string    VALUE 'H01'.
     CONSTANTS gc_langu      TYPE spras     VALUE 'E'.
 
-    "! %cid ที่ไม่ซ้ำกันทั้ง request — ของเดิมใช้ค่าคงที่ในลูปทำให้ RAP resolve ไม่ออก
+    "! %cid ที่ไม่ซ้ำกันทั้ง MODIFY ENTITIES — นับแยก counter ต่อ prefix
+    "! item pricing / item text นับต่อเนื่องข้าม item ไม่ได้เริ่มใหม่ทุกใบ
+    "! เพราะ %cid ต้องไม่ซ้ำทั้ง statement · ตัวที่ผูกกับ item คือ %cid_ref
     METHODS next_cid
       IMPORTING iv_prefix        TYPE string
       RETURNING VALUE(rv_result) TYPE string.
@@ -356,6 +358,12 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     ENDIF.
 
     " ---------- Create ----------
+    " PRIVILEGED: comm user ไม่ได้รับ business role บน S/4HANA Cloud Public Edition
+    " สิทธิ์มาจาก inbound role ที่ scenario ZCS_SO_CREATE generate จาก auth default values
+    " ของ HTTP service ซึ่งประกาศไว้แค่ S_START = เรียก service ได้ แต่ไม่มีสิทธิ์ข้อมูล
+    " ตัดออกแล้วจะได้ V_VBAK_VKO "No authorization for maintaining sales documents"
+    " service นี้เป็น authorization boundary อยู่แล้ว (SBPA เข้าทางเดียว) และ sales area
+    " กับ order type ไม่ได้มาจาก request แต่อ่านจาก mapping table ZTSD_PRCS_TY
     MODIFY ENTITIES OF i_salesordertp PRIVILEGED
       ENTITY SalesOrder
         EXECUTE createwithreference

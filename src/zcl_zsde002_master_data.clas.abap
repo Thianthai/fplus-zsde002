@@ -108,6 +108,8 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
     ENDLOOP.
 
+    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่าน master data
+    " view นี้อ่านเพื่อเช็คว่ามีอยู่จริงเท่านั้น ไม่ได้ส่งข้อมูลกลับไปให้ผู้เรียก
     SELECT FROM I_CustomerSalesArea WITH PRIVILEGED ACCESS
       FIELDS SalesOrganization,
              DistributionChannel,
@@ -192,6 +194,8 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
     lr_product = VALUE #( FOR <lfs_for> IN it_key
                         ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
 
+    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่าน master data
+    " view นี้อ่านเพื่อเช็คว่ามีอยู่จริงเท่านั้น ไม่ได้ส่งข้อมูลกลับไปให้ผู้เรียก
     SELECT FROM I_Product WITH PRIVILEGED ACCESS
       FIELDS Product
       WHERE Product IN @lr_product
@@ -294,6 +298,8 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
     ENDLOOP.
 
+    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่าน master data
+    " view นี้อ่านเพื่อเช็คว่ามีอยู่จริงเท่านั้น ไม่ได้ส่งข้อมูลกลับไปให้ผู้เรียก
     SELECT FROM I_ProductUnitsOfMeasure WITH PRIVILEGED ACCESS
       FIELDS Product,
              AlternativeUnit

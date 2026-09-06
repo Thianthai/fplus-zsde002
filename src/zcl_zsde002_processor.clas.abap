@@ -507,7 +507,8 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                              CHANGING  cs_result = cs_result ).
     ENDTRY.
 
-    " master list ของ process type ย้ายมาอยู่ที่ mapping table แล้ว ไม่ได้อยู่ใน param config
+    " process type master อยู่ที่ mapping table ZTSD_PRCS_TY ไม่ใช่ param config
+    " เพราะ validation ต้องเทียบค่าใน row (tran type / doc type / sales area) ไม่ใช่แค่เช็คว่ามี
     cs_param-t_process_type = go_master_data->read_process_type( ).
 
     IF cs_param-t_process_type IS INITIAL.
@@ -557,13 +558,6 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     cs_order-bill_to_party = zcl_zsde002_validator=>to_internal_customer( cs_order-bill_to_party ).
     cs_order-payer         = zcl_zsde002_validator=>to_internal_customer( cs_order-payer ).
     cs_order-stock_van     = zcl_zsde002_validator=>to_internal_customer( cs_order-stock_van ).
-
-    " Administrative Data
-    cs_order-created_by            = lv_user.
-    cs_order-created_at            = lv_now.
-    cs_order-last_changed_by       = lv_user.
-    cs_order-last_changed_at       = lv_now.
-    cs_order-local_last_changed_at = lv_now.
 
     " 2. Order Pricing -------------------------------------------------
     LOOP AT ct_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).

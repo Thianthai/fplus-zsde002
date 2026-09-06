@@ -35,6 +35,8 @@ authorization dependent by _OrderLog
   field ( readonly:update ) OrderUUID;
 
   association _ItemLog;
+  // _OrderLog มีไว้เพื่อ lock/authorization dependent by เท่านั้น
+  // RAP บังคับให้ชี้ไป root (lock master) ไม่ใช่ parent — ห้ามลบแม้จะดูไม่ได้ใช้
   association _OrderLog;
 }
 
