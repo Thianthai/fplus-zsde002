@@ -434,8 +434,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       ENDIF.
 
       " 6.6 Status -----------------------------------------------------
-      ls_order-order_status = COND #( WHEN NOT line_exists( lt_error[ msgty = 'E' ] ) THEN 'S'
-                                      WHEN ls_order-sales_order_number IS NOT INITIAL   THEN 'W'
+      " ตัดสินจากการมีเลข SO เป็นหลัก — message severity เชื่อไม่ได้
+      " เพราะ RAP อธิบายความล้มเหลวด้วย W ได้
+      ls_order-order_status = COND #( WHEN ls_order-sales_order_number IS NOT INITIAL AND NOT line_exists( lt_error[ msgty = 'E' ] ) THEN 'S'
+                                      WHEN ls_order-sales_order_number IS NOT INITIAL THEN 'W'
                                       ELSE 'E' ).
 
       " 6.7 Save -------------------------------------------------------
@@ -456,7 +458,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       ENDIF.
 
       " 6.8 Result -----------------------------------------------------
-      IF NOT line_exists( lt_error[ msgty = 'E' ] ).
+      IF ls_order-order_status = 'S'.
         rs_result-passed = rs_result-passed + 1.
       ELSE.
         rs_result-failed = rs_result-failed + 1.
@@ -1323,8 +1325,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDIF.
 
-    " ไม่สำเร็จ → 1 แถวต่อ 1 error
-    LOOP AT it_error ASSIGNING FIELD-SYMBOL(<lfs_error>) WHERE msgty = 'E'.
+    " ไม่สำเร็จ → 1 แถวต่อ 1 message ไม่ว่า severity ไหน
+    " RAP มักบอกสาเหตุจริงด้วย W หรือ I แล้วค่อย fail operation — กรองเฉพาะ E จะทิ้งคำตอบไป
+    LOOP AT it_error ASSIGNING FIELD-SYMBOL(<lfs_error>).
 
       APPEND VALUE #( status             = is_order-order_status
                       code               = |{ <lfs_error>-msgno }|

@@ -215,6 +215,7 @@ CLASS ltcl_order_out DEFINITION FINAL FOR TESTING
     METHODS warning_does_not_make_a_row FOR TESTING.
     METHODS failure_without_error_is_501 FOR TESTING.
     METHODS time_is_bangkok_not_utc     FOR TESTING.
+    METHODS failure_keeps_warning_text FOR TESTING.
 
     METHODS order
       RETURNING VALUE(rs_result) TYPE zcl_zsde002_processor=>ty_order.
@@ -336,6 +337,24 @@ CLASS ltcl_order_out IMPLEMENTATION.
 
     cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-processing_date
                                         exp = `06-09-2026` ).
+
+  ENDMETHOD.
+
+  METHOD failure_keeps_warning_text.
+
+    " RAP fail operation แล้วอธิบายสาเหตุด้วย severity W — ข้อความนั้นคือคำตอบ
+    " ต้องไม่ถูกกรองทิ้งแล้วเหลือแต่ 501 ที่บอกแค่ว่าล้ม
+    DATA(ls_order) = order( ).
+    ls_order-order_status = 'E'.
+
+    DATA(lt_out) = go_cut->to_order_out(
+                     is_order = ls_order
+                     it_error = VALUE #( ( msgno = '000' msgty = 'W'
+                                           msgtx = `Item 000010: Pricing Error` ) ) ).
+
+    cl_abap_unit_assert=>assert_equals( act = lines( lt_out ) exp = 1 ).
+    cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-message
+                                        exp = `Item 000010: Pricing Error` ).
 
   ENDMETHOD.
 

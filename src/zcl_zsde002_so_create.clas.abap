@@ -455,15 +455,23 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
                     ) TO rs_result-errors.
     ENDLOOP.
 
-    " ล้มตั้งแต่ modify แล้วไม่ต้อง commit
+    " ล้มตั้งแต่ modify — ทิ้ง state ใน transactional buffer แล้วปิด RAP transaction
+    " ถ้าไม่ทิ้ง ซากของใบนี้จะค้างไปถึง MODIFY ENTITIES ของ order ใบถัดไปใน request เดียวกัน
     IF ls_failed IS NOT INITIAL.
-      APPEND VALUE #( msgno            = '501'
-                      msgty            = 'E'
-                      msgtx            = zcl_zsde002_processor=>message_text(
-                                           iv_msgno = '501'
-                                           iv_v1    = |{ is_order-sf_header_id_ref }| )
-                      sf_header_id_ref = is_order-sf_header_id_ref
-                    ) TO rs_result-errors.
+      ROLLBACK ENTITIES.
+
+      " 501 บอกแค่ว่าล้ม ไม่ได้บอกสาเหตุ — ใส่เฉพาะตอน RAP ล้มโดยไม่รายงานอะไรเลย
+      " ถ้า RAP อธิบายมาแล้ว ข้อความของมันคือคำตอบที่ผู้เรียกต้องการ
+      IF rs_result-errors IS INITIAL.
+        APPEND VALUE #( msgno            = '501'
+                        msgty            = 'E'
+                        msgtx            = zcl_zsde002_processor=>message_text(
+                                             iv_msgno = '501'
+                                             iv_v1    = |{ is_order-sf_header_id_ref }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                      ) TO rs_result-errors.
+      ENDIF.
+
       RETURN.
     ENDIF.
 
@@ -481,6 +489,8 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
 
     COMMIT ENTITIES END.
 
+    DATA(lv_before_commit) = lines( rs_result-errors ).
+
     LOOP AT ls_commit_reported-salesorder INTO DATA(ls_commit_msg) WHERE %msg IS BOUND.
       APPEND VALUE #( msgno            = '000'
                       msgty            = ls_commit_msg-%msg->m_severity
@@ -490,13 +500,18 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     ENDLOOP.
 
     IF ls_commit_failed IS NOT INITIAL.
-      APPEND VALUE #( msgno            = '502'
-                      msgty            = 'E'
-                      msgtx            = zcl_zsde002_processor=>message_text(
-                                           iv_msgno = '502'
-                                           iv_v1    = |{ is_order-sf_header_id_ref }| )
-                      sf_header_id_ref = is_order-sf_header_id_ref
-                    ) TO rs_result-errors.
+
+      " เหมือน 501 — ใส่ 502 เฉพาะตอน commit ล้มโดยไม่มีข้อความอธิบาย
+      IF lines( rs_result-errors ) = lv_before_commit.
+        APPEND VALUE #( msgno            = '502'
+                        msgty            = 'E'
+                        msgtx            = zcl_zsde002_processor=>message_text(
+                                             iv_msgno = '502'
+                                             iv_v1    = |{ is_order-sf_header_id_ref }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                      ) TO rs_result-errors.
+      ENDIF.
+
       RETURN.
     ENDIF.
 
@@ -515,13 +530,16 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
                       sf_header_id_ref = is_order-sf_header_id_ref
                     ) TO rs_result-errors.
     ELSE.
-      APPEND VALUE #( msgno            = '501'
-                      msgty            = 'E'
-                      msgtx            = zcl_zsde002_processor=>message_text(
-                                           iv_msgno = '501'
-                                           iv_v1    = |{ is_order-sf_header_id_ref }| )
-                      sf_header_id_ref = is_order-sf_header_id_ref
-                    ) TO rs_result-errors.
+      " commit ผ่านแต่ไม่ได้เลข SO กลับมา — ไม่ควรเกิด
+      IF rs_result-errors IS INITIAL.
+        APPEND VALUE #( msgno            = '501'
+                        msgty            = 'E'
+                        msgtx            = zcl_zsde002_processor=>message_text(
+                                             iv_msgno = '501'
+                                             iv_v1    = |{ is_order-sf_header_id_ref }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                      ) TO rs_result-errors.
+      ENDIF.
     ENDIF.
 
   ENDMETHOD.
