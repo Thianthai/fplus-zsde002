@@ -32,6 +32,10 @@ CLASS zcl_zsde002_validator DEFINITION
       IMPORTING iv_value         TYPE clike
       RETURNING VALUE(rv_result) TYPE I_Product-Product.
 
+    CLASS-METHODS to_internal_unit
+      IMPORTING iv_value         TYPE clike
+      RETURNING VALUE(rv_result) TYPE I_ProductUnitsOfMeasure-AlternativeUnit.
+
     CLASS-METHODS is_valid_date
       IMPORTING iv_value         TYPE clike
       RETURNING VALUE(rv_result) TYPE abap_bool.
@@ -138,6 +142,15 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
     " ตัวเลขล้วน → ชิดขวาเติมศูนย์ครบ 18 แล้วย้ายลง CHAR(40) แบบชิดซ้าย
     lv_material = |{ lv_input WIDTH = 18 ALIGN = RIGHT PAD = '0' }|.
     rv_result   = lv_material.
+
+  ENDMETHOD.
+
+
+  METHOD to_internal_unit.
+
+    " SBPA เรียกหน่วยลังว่า CAR ส่วน SAP เก็บเป็น KAR
+    " ต้องแปลงก่อน validate ไม่งั้น sales_unit จะไปตกที่ message 253
+    rv_result = COND #( WHEN iv_value = 'CAR' THEN 'KAR' ELSE iv_value ).
 
   ENDMETHOD.
 

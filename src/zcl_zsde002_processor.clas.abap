@@ -627,6 +627,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       " Order UUID
       <lfs_pricing>-order_uuid = cs_order-order_uuid.
 
+      " Condition Unit Of Measure
+      <lfs_pricing>-condition_unit_of_measure = zcl_zsde002_validator=>to_internal_unit( <lfs_pricing>-condition_unit_of_measure ).
+
       " Administrative Data
       <lfs_pricing>-created_by            = cs_order-created_by.
       <lfs_pricing>-created_at            = cs_order-created_at.
@@ -658,6 +661,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     " Order UUID
     cs_item-order_uuid = is_order-order_uuid.
 
+    " Sales Unit
+    cs_item-sales_unit = zcl_zsde002_validator=>to_internal_unit( cs_item-sales_unit ).
+
     " Administrative Data
     cs_item-created_by            = is_order-created_by.
     cs_item-created_at            = is_order-created_at.
@@ -681,9 +687,12 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
           RETURN.
       ENDTRY.
 
-      " Order UUID
+      " Order & Item UUID
       <lfs_pricing>-item_uuid  = cs_item-item_uuid.
       <lfs_pricing>-order_uuid = cs_item-order_uuid.
+
+      " Condition Unit Of Measure
+      <lfs_pricing>-condition_unit_of_measure = zcl_zsde002_validator=>to_internal_unit( <lfs_pricing>-condition_unit_of_measure ).
 
       " Administrative Data
       <lfs_pricing>-created_by            = cs_item-created_by.
@@ -902,7 +911,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         IF  lv_material           IS NOT INITIAL
         AND <lfs_item>-sales_unit IS NOT INITIAL.
           INSERT VALUE #( product          = lv_material
-                          alternative_unit = <lfs_item>-sales_unit
+                          alternative_unit = zcl_zsde002_validator=>to_internal_unit( <lfs_item>-sales_unit )
                         ) INTO TABLE lt_product_unit.
         ENDIF.
 

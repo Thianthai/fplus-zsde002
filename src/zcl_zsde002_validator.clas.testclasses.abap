@@ -212,3 +212,41 @@ CLASS ltcl_order_format IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+
+
+CLASS ltcl_unit DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+    METHODS car_becomes_kar        FOR TESTING.
+    METHODS kar_is_unchanged       FOR TESTING.
+    METHODS other_unit_passes_thru FOR TESTING.
+    METHODS blank_stays_blank      FOR TESTING.
+
+ENDCLASS.
+
+
+CLASS ltcl_unit IMPLEMENTATION.
+
+  METHOD car_becomes_kar.
+    cl_abap_unit_assert=>assert_equals( act = zcl_zsde002_validator=>to_internal_unit( `CAR` )
+                                        exp = 'KAR' ).
+  ENDMETHOD.
+
+  METHOD kar_is_unchanged.
+    " ส่ง KAR มาตรงๆ ต้องไม่ถูกแปลงซ้ำหรือถูกปฏิเสธ
+    cl_abap_unit_assert=>assert_equals( act = zcl_zsde002_validator=>to_internal_unit( `KAR` )
+                                        exp = 'KAR' ).
+  ENDMETHOD.
+
+  METHOD other_unit_passes_thru.
+    cl_abap_unit_assert=>assert_equals( act = zcl_zsde002_validator=>to_internal_unit( `EA` )
+                                        exp = 'EA' ).
+  ENDMETHOD.
+
+  METHOD blank_stays_blank.
+    cl_abap_unit_assert=>assert_initial( zcl_zsde002_validator=>to_internal_unit( `` ) ).
+  ENDMETHOD.
+
+ENDCLASS.

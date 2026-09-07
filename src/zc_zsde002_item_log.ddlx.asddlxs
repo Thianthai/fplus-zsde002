@@ -7,7 +7,8 @@
     title:       { type: #STANDARD, value: 'Item' },
     description: { type: #STANDARD, value: 'MaterialNumber' }
   },
-  presentationVariant: [{ sortOrder: [{ by: 'Item', direction: #ASC }] }]
+  presentationVariant: [{ sortOrder:      [{ by: 'ItemUUID', direction: #ASC }],
+                          visualizations: [{ type: #AS_LINEITEM }] }]
 }
 annotate entity ZC_ZSDE002_ITEM_LOG
   with

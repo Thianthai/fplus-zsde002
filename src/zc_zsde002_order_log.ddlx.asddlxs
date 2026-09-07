@@ -7,7 +7,8 @@
     title:       { type: #STANDARD, value: 'SfHeaderIdRef' },
     description: { type: #STANDARD, value: 'SalesOrderNumber' }
   },
-  presentationVariant: [{ sortOrder: [{ by: 'CreatedAt', direction: #DESC }] }]
+  presentationVariant: [{ sortOrder:      [{ by: 'CreatedAt', direction: #DESC }],
+                          visualizations: [{ type: #AS_LINEITEM }] }]
 }
 annotate entity ZC_ZSDE002_ORDER_LOG
   with
