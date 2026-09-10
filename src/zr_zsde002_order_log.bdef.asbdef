@@ -13,6 +13,7 @@ authorization master ( global )
   association _ItemLog         { create; }
   association _OrderPricingLog { create; }
   association _OrderMessageLog { create; }
+  association _ItemPricingLog;
 }
 
 define behavior for ZI_ZSDE002_ITEM_LOG alias ItemLog

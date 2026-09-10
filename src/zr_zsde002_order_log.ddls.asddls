@@ -8,6 +8,9 @@ define root view entity ZR_ZSDE002_ORDER_LOG
   composition [0..*] of ZI_ZSDE002_ORDPRC_LOG as _OrderPricingLog
   composition [0..*] of ZI_ZSDE002_ORDMSG_LOG as _OrderMessageLog
   composition [0..*] of ZI_ZSDE002_ITEM_LOG   as _ItemLog
+  
+  association [0..*] to ZI_ZSDE002_ITMPRC_LOG as _ItemPricingLog
+  on $projection.OrderUUID = _ItemPricingLog.OrderUUID
 {
       @EndUserText.label: 'Order Log UUID'
   key order_uuid                    as OrderUUID,
@@ -97,5 +100,6 @@ define root view entity ZR_ZSDE002_ORDER_LOG
 
       _OrderPricingLog,
       _OrderMessageLog,
-      _ItemLog
+      _ItemLog,
+      _ItemPricingLog
 }

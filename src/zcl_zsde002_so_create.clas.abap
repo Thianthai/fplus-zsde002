@@ -439,20 +439,30 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     " ---------- Message จาก modify ----------
     " ข้อความจาก RAP เป็น free text จึงใช้ message 000 แล้วใส่ข้อความลง msgtx ตรงๆ
     " ไม่ผ่าน message_text เพราะ placeholder ของ T100 ตัดที่ 50 ตัวอักษร
-    LOOP AT ls_reported-salesorder INTO DATA(ls_reported_header) WHERE %msg IS BOUND.
-      APPEND VALUE #( msgno            = '000'
-                      msgty            = ls_reported_header-%msg->m_severity
-                      msgtx            = ls_reported_header-%msg->if_message~get_text( )
-                      sf_header_id_ref = is_order-sf_header_id_ref
-                    ) TO rs_result-errors.
-    ENDLOOP.
+    " ไล่ทุก entity ด้วย RTTI แทนการแจงชื่อเอง — เดิมอ่านแค่ salesorder กับ salesorderitem
+    " ทำให้ error ที่ RAP รายงานไว้ที่ pricing element / partner / text หายไปทั้งหมด
+    " เหลือแต่ข้อความห่อของ header ที่บอกแค่ว่า "ไปแก้ error ก่อนหน้า"
+    FIELD-SYMBOLS <lft_reported> TYPE ANY TABLE.
+    FIELD-SYMBOLS <lfs_row>      TYPE any.
+    FIELD-SYMBOLS <lfo_msg>      TYPE REF TO if_abap_behv_message.
 
-    LOOP AT ls_reported-salesorderitem INTO DATA(ls_reported_item) WHERE %msg IS BOUND.
-      APPEND VALUE #( msgno            = '000'
-                      msgty            = ls_reported_item-%msg->m_severity
-                      msgtx            = ls_reported_item-%msg->if_message~get_text( )
-                      sf_header_id_ref = is_order-sf_header_id_ref
-                    ) TO rs_result-errors.
+    DATA(lo_reported) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( ls_reported ) ).
+
+    LOOP AT lo_reported->components ASSIGNING FIELD-SYMBOL(<lfs_comp>).
+      ASSIGN COMPONENT <lfs_comp>-name OF STRUCTURE ls_reported TO <lft_reported>.
+      CHECK sy-subrc = 0.
+
+      LOOP AT <lft_reported> ASSIGNING <lfs_row>.
+
+        ASSIGN COMPONENT '%MSG' OF STRUCTURE <lfs_row> TO <lfo_msg>.
+        CHECK sy-subrc = 0 AND <lfo_msg> IS BOUND.
+
+        APPEND VALUE #( msgno            = '000'
+                        msgty            = <lfo_msg>->m_severity
+                        msgtx            = <lfo_msg>->if_message~get_text( )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                      ) TO rs_result-errors.
+      ENDLOOP.
     ENDLOOP.
 
     " ล้มตั้งแต่ modify — ทิ้ง state ใน transactional buffer แล้วปิด RAP transaction

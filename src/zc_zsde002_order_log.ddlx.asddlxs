@@ -47,6 +47,9 @@ annotate entity ZC_ZSDE002_ORDER_LOG
     { id: 'OrderPricingFacet', purpose: #STANDARD, type: #LINEITEM_REFERENCE,
       label: 'Order Pricing', position: 30, targetElement: '_OrderPricingLog' },
 
+    { id: 'ItemPricingFacet', purpose: #STANDARD, type: #LINEITEM_REFERENCE,
+      label: 'Item Pricing', position: 35, targetElement: '_ItemPricingLog' },
+      
     { id: 'OrderMessageFacet', purpose: #STANDARD, type: #LINEITEM_REFERENCE,
       label: 'Messages', position: 40, targetElement: '_OrderMessageLog' },
       

@@ -6,6 +6,7 @@ define behavior for ZC_ZSDE002_ORDER_LOG alias OrderLog
   use association _ItemLog;
   use association _OrderPricingLog;
   use association _OrderMessageLog;
+  use association _ItemPricingLog;
 }
 
 define behavior for ZC_ZSDE002_ITEM_LOG alias ItemLog

@@ -58,5 +58,6 @@ define root view entity ZC_ZSDE002_ORDER_LOG
       /* Associations */
       _ItemLog         : redirected to composition child ZC_ZSDE002_ITEM_LOG,
       _OrderPricingLog : redirected to composition child ZC_ZSDE002_ORDPRC_LOG,
-      _OrderMessageLog : redirected to composition child ZC_ZSDE002_ORDMSG_LOG
+      _OrderMessageLog : redirected to composition child ZC_ZSDE002_ORDMSG_LOG,
+      _ItemPricingLog  : redirected to ZC_ZSDE002_ITMPRC_LOG
 }
