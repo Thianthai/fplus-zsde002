@@ -1325,9 +1325,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDIF.
 
-    " ไม่สำเร็จ → 1 แถวต่อ 1 message ไม่ว่า severity ไหน
-    " RAP มักบอกสาเหตุจริงด้วย W หรือ I แล้วค่อย fail operation — กรองเฉพาะ E จะทิ้งคำตอบไป
-    LOOP AT it_error ASSIGNING FIELD-SYMBOL(<lfs_error>).
+    " ไม่สำเร็จ → 1 แถวต่อ 1 error เฉพาะ E
+    " W/I ไม่มีผลว่าสร้าง SO ได้หรือไม่ และผู้เรียกเป็น RPA ที่ไม่มีคนอ่าน — ส่งไปก็ไม่มีใครทำอะไร
+    " ทุก severity ยังลง log ครบผ่าน to_order_message ไว้ให้คนไล่ปัญหา
+    LOOP AT it_error ASSIGNING FIELD-SYMBOL(<lfs_error>) WHERE msgty = 'E'.
 
       APPEND VALUE #( status             = is_order-order_status
                       code               = |{ <lfs_error>-msgno }|

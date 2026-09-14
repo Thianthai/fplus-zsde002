@@ -215,7 +215,7 @@ CLASS ltcl_order_out DEFINITION FINAL FOR TESTING
     METHODS warning_does_not_make_a_row FOR TESTING.
     METHODS failure_without_error_is_501 FOR TESTING.
     METHODS time_is_bangkok_not_utc     FOR TESTING.
-    METHODS failure_keeps_warning_text FOR TESTING.
+    METHODS warning_only_failure_is_501 FOR TESTING.
 
     METHODS order
       RETURNING VALUE(rs_result) TYPE zcl_zsde002_processor=>ty_order.
@@ -340,21 +340,23 @@ CLASS ltcl_order_out IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD failure_keeps_warning_text.
+  METHOD warning_only_failure_is_501.
 
-    " RAP fail operation แล้วอธิบายสาเหตุด้วย severity W — ข้อความนั้นคือคำตอบ
-    " ต้องไม่ถูกกรองทิ้งแล้วเหลือแต่ 501 ที่บอกแค่ว่าล้ม
+    " W ไม่ถูกส่งกลับ — ผู้เรียกเป็น RPA ไม่มีคนอ่าน และ W ไม่มีผลว่าสร้าง SO ได้หรือไม่
+    " order ที่ล้มโดยมีแต่ W ต้องได้ 501 จาก fallback แทน ไม่ใช่หายไปจาก response
     DATA(ls_order) = order( ).
     ls_order-order_status = 'E'.
 
     DATA(lt_out) = go_cut->to_order_out(
                      is_order = ls_order
                      it_error = VALUE #( ( msgno = '000' msgty = 'W'
-                                           msgtx = `Item 000010: Pricing Error` ) ) ).
+                                           msgtx = `Date is in the past: Please check` ) ) ).
 
     cl_abap_unit_assert=>assert_equals( act = lines( lt_out ) exp = 1 ).
-    cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-message
-                                        exp = `Item 000010: Pricing Error` ).
+    cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-code exp = `501` ).
+    cl_abap_unit_assert=>assert_differs( act = lt_out[ 1 ]-message
+                                         exp = `Date is in the past: Please check`
+                                         msg = `W ต้องไม่หลุดออกไปใน response` ).
 
   ENDMETHOD.
 

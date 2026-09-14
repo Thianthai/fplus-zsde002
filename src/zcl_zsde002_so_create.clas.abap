@@ -470,9 +470,9 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     IF ls_failed IS NOT INITIAL.
       ROLLBACK ENTITIES.
 
-      " 501 บอกแค่ว่าล้ม ไม่ได้บอกสาเหตุ — ใส่เฉพาะตอน RAP ล้มโดยไม่รายงานอะไรเลย
-      " ถ้า RAP อธิบายมาแล้ว ข้อความของมันคือคำตอบที่ผู้เรียกต้องการ
-      IF rs_result-errors IS INITIAL.
+      " 501 บอกแค่ว่าล้ม ไม่ได้บอกสาเหตุ — ใส่เฉพาะตอน RAP ไม่มี E มาอธิบาย
+      " W/I ไม่นับ เพราะไม่ได้ถูกส่งกลับไปให้ผู้เรียก ถ้าไม่มี 501 ก็จะไม่มีอะไรบอกว่าล้มเลย
+      IF NOT line_exists( rs_result-errors[ msgty = 'E' ] ).
         APPEND VALUE #( msgno            = '501'
                         msgty            = 'E'
                         msgtx            = zcl_zsde002_processor=>message_text(
@@ -499,7 +499,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
 
     COMMIT ENTITIES END.
 
-    DATA(lv_before_commit) = lines( rs_result-errors ).
+*    DATA(lv_before_commit) = lines( rs_result-errors ).
 
     " ไล่ทุก entity เหมือนฝั่ง modify — commit รายงานข้อความจาก entity ไหนก็ได้
     DATA(lo_commit_reported) = CAST cl_abap_structdescr(
@@ -524,8 +524,8 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
 
     IF ls_commit_failed IS NOT INITIAL.
 
-      " เหมือน 501 — ใส่ 502 เฉพาะตอน commit ล้มโดยไม่มีข้อความอธิบาย
-      IF lines( rs_result-errors ) = lv_before_commit.
+      " เหมือน 501 — ใส่ 502 เฉพาะตอนไม่มี E มาอธิบาย
+      IF NOT line_exists( rs_result-errors[ msgty = 'E' ] ).
         APPEND VALUE #( msgno            = '502'
                         msgty            = 'E'
                         msgtx            = zcl_zsde002_processor=>message_text(
@@ -554,7 +554,7 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
                     ) TO rs_result-errors.
     ELSE.
       " commit ผ่านแต่ไม่ได้เลข SO กลับมา — ไม่ควรเกิด
-      IF rs_result-errors IS INITIAL.
+      IF NOT line_exists( rs_result-errors[ msgty = 'E' ] ).
         APPEND VALUE #( msgno            = '501'
                         msgty            = 'E'
                         msgtx            = zcl_zsde002_processor=>message_text(
