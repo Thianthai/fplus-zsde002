@@ -501,12 +501,25 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
 
     DATA(lv_before_commit) = lines( rs_result-errors ).
 
-    LOOP AT ls_commit_reported-salesorder INTO DATA(ls_commit_msg) WHERE %msg IS BOUND.
-      APPEND VALUE #( msgno            = '000'
-                      msgty            = ls_commit_msg-%msg->m_severity
-                      msgtx            = ls_commit_msg-%msg->if_message~get_text( )
-                      sf_header_id_ref = is_order-sf_header_id_ref
-                    ) TO rs_result-errors.
+    " ไล่ทุก entity เหมือนฝั่ง modify — commit รายงานข้อความจาก entity ไหนก็ได้
+    DATA(lo_commit_reported) = CAST cl_abap_structdescr(
+                                 cl_abap_typedescr=>describe_by_data( ls_commit_reported ) ).
+
+    LOOP AT lo_commit_reported->components ASSIGNING FIELD-SYMBOL(<lfs_commit_comp>).
+      ASSIGN COMPONENT <lfs_commit_comp>-name OF STRUCTURE ls_commit_reported TO <lft_reported>.
+      CHECK sy-subrc = 0.
+
+      LOOP AT <lft_reported> ASSIGNING <lfs_row>.
+
+        ASSIGN COMPONENT '%MSG' OF STRUCTURE <lfs_row> TO <lfo_msg>.
+        CHECK sy-subrc = 0 AND <lfo_msg> IS BOUND.
+
+        APPEND VALUE #( msgno            = '000'
+                        msgty            = <lfo_msg>->m_severity
+                        msgtx            = <lfo_msg>->if_message~get_text( )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                      ) TO rs_result-errors.
+      ENDLOOP.
     ENDLOOP.
 
     IF ls_commit_failed IS NOT INITIAL.
