@@ -1325,12 +1325,14 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDIF.
 
-    " ไม่สำเร็จ → 1 แถวต่อ 1 error เฉพาะ E
-    " W/I ไม่มีผลว่าสร้าง SO ได้หรือไม่ และผู้เรียกเป็น RPA ที่ไม่มีคนอ่าน — ส่งไปก็ไม่มีใครทำอะไร
-    " ทุก severity ยังลง log ครบผ่าน to_order_message ไว้ให้คนไล่ปัญหา
-    LOOP AT it_error ASSIGNING FIELD-SYMBOL(<lfs_error>) WHERE msgty = 'E'.
+    " ไม่สำเร็จ → 1 แถวต่อ 1 message ทุก severity
+    " row Status = severity ของ message นั้น ไม่ใช่ผลของ order — ผลของ order ดูจาก request Status
+    " และ SalesOrderNumber ว่างหรือไม่ · ที่ส่ง W ด้วยเพราะ RAP มักบอกสาเหตุจริงเป็น W
+    " แล้วให้ E เป็นแค่ข้อความห่อ "resolve previous errors" — ส่งแต่ E จะได้แต่กระดาษห่อ
+    " ส่วน order ที่สำเร็จคืน row เดียว (500) ไม่ส่ง W เพราะไม่มีผลอะไรและผู้เรียกเป็น RPA
+    LOOP AT it_error ASSIGNING FIELD-SYMBOL(<lfs_error>).
 
-      APPEND VALUE #( status             = is_order-order_status
+      APPEND VALUE #( status             = <lfs_error>-msgty
                       code               = |{ <lfs_error>-msgno }|
                       message            = <lfs_error>-msgtx
                       sales_order_number = is_order-sales_order_number
@@ -1345,9 +1347,10 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDLOOP.
 
-    " กันเคสที่ไม่สำเร็จแต่ไม่มี error message เลย — ไม่ควรเกิด แต่ถ้าเกิดจะทำให้ order หายจาก response
-    IF rt_result IS INITIAL.
-      APPEND VALUE #( status             = is_order-order_status
+    " order ที่ล้มต้องมี row E อย่างน้อยหนึ่งแถวเสมอ — ถ้ามีแต่ W หรือไม่มีอะไรเลย
+    " ผู้เรียกจะไม่มีบรรทัดไหนบอกว่าล้ม จึงเติม 501 ปิดท้าย
+    IF NOT line_exists( rt_result[ status = 'E' ] ).
+      APPEND VALUE #( status             = 'E'
                       code               = '501'
                       message            = message_text( iv_msgno = '501'
                                                          iv_v1    = |{ is_order-sf_header_id_ref }| )

@@ -215,7 +215,8 @@ CLASS ltcl_order_out DEFINITION FINAL FOR TESTING
     METHODS warning_does_not_make_a_row FOR TESTING.
     METHODS failure_without_error_is_501 FOR TESTING.
     METHODS time_is_bangkok_not_utc     FOR TESTING.
-    METHODS warning_only_failure_is_501 FOR TESTING.
+    METHODS warning_row_keeps_severity FOR TESTING.
+    METHODS warning_only_still_gets_e_row FOR TESTING.
 
     METHODS order
       RETURNING VALUE(rs_result) TYPE zcl_zsde002_processor=>ty_order.
@@ -340,10 +341,30 @@ CLASS ltcl_order_out IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD warning_only_failure_is_501.
+  METHOD warning_row_keeps_severity.
 
-    " W ไม่ถูกส่งกลับ — ผู้เรียกเป็น RPA ไม่มีคนอ่าน และ W ไม่มีผลว่าสร้าง SO ได้หรือไม่
-    " order ที่ล้มโดยมีแต่ W ต้องได้ 501 จาก fallback แทน ไม่ใช่หายไปจาก response
+    " order ล้ม → คืนทุก message และ row Status = severity ของ message นั้น
+    " W ต้องออกมาเป็น W ไม่ใช่ถูกทับด้วย E ของ order — ไม่งั้นแยกไม่ออกว่าบรรทัดไหนคือสาเหตุ
+    DATA(ls_order) = order( ).
+    ls_order-order_status = 'E'.
+
+    DATA(lt_out) = go_cut->to_order_out(
+                     is_order = ls_order
+                     it_error = VALUE #( ( msgno = '000' msgty = 'W'
+                                           msgtx = `Item 000010: Pricing Error` )
+                                         ( msgno = '000' msgty = 'E'
+                                           msgtx = `Currently unable to process your request.` ) ) ).
+
+    cl_abap_unit_assert=>assert_equals( act = lines( lt_out ) exp = 2 ).
+    cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-status  exp = 'W' ).
+    cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-message exp = `Item 000010: Pricing Error` ).
+    cl_abap_unit_assert=>assert_equals( act = lt_out[ 2 ]-status  exp = 'E' ).
+
+  ENDMETHOD.
+
+  METHOD warning_only_still_gets_e_row.
+
+    " ล้มโดยมีแต่ W → ต้องมี E อย่างน้อยหนึ่งแถวเสมอ ไม่งั้นไม่มีอะไรบอกผู้เรียกว่าล้ม
     DATA(ls_order) = order( ).
     ls_order-order_status = 'E'.
 
@@ -352,11 +373,10 @@ CLASS ltcl_order_out IMPLEMENTATION.
                      it_error = VALUE #( ( msgno = '000' msgty = 'W'
                                            msgtx = `Date is in the past: Please check` ) ) ).
 
-    cl_abap_unit_assert=>assert_equals( act = lines( lt_out ) exp = 1 ).
-    cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-code exp = `501` ).
-    cl_abap_unit_assert=>assert_differs( act = lt_out[ 1 ]-message
-                                         exp = `Date is in the past: Please check`
-                                         msg = `W ต้องไม่หลุดออกไปใน response` ).
+    cl_abap_unit_assert=>assert_equals( act = lines( lt_out ) exp = 2 ).
+    cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-status exp = 'W' ).
+    cl_abap_unit_assert=>assert_equals( act = lt_out[ 2 ]-status exp = 'E' ).
+    cl_abap_unit_assert=>assert_equals( act = lt_out[ 2 ]-code   exp = `501` ).
 
   ENDMETHOD.
 
