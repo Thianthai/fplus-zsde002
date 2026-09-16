@@ -161,6 +161,12 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>211</MSGNR>
+     <TEXT>Sales document type &amp;1 (category &amp;2) is not supported</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>250</MSGNR>
      <TEXT>Material &amp;1 does not exist</TEXT>
     </T100>
@@ -240,19 +246,19 @@
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>500</MSGNR>
-     <TEXT>Sales order &amp;1 created</TEXT>
+     <TEXT>Document &amp;1 created</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>501</MSGNR>
-     <TEXT>Sales order creation failed for &amp;1</TEXT>
+     <TEXT>Document creation failed for &amp;1</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>502</MSGNR>
-     <TEXT>Sales order could not be committed for &amp;1</TEXT>
+     <TEXT>Document could not be committed for &amp;1</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>

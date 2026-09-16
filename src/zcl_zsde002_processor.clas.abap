@@ -120,13 +120,18 @@ CLASS zcl_zsde002_processor DEFINITION
     " cl_abap_context_info=>get_user_time_zone( ) คืน UTC แม้ user จะตั้ง Asia/Bangkok ไว้แล้ว
     " ใช้ UTC+7 เพราะเป็น ID เดียวที่มีอยู่จริงบน tenant นี้ — THA / BANGKOK / INDCH
     " ทำให้ CONVERT TIME STAMP คืน sy-subrc 8 แบบเงียบๆ แล้วได้วันที่เป็นศูนย์
-    CONSTANTS gc_time_zone TYPE timezone VALUE 'UTC+7'.
+    CONSTANTS gc_time_zone            TYPE timezone VALUE 'UTC+7'.
+    CONSTANTS gc_category_order       TYPE zif_zsde002_master_data=>ty_sd_document_category VALUE 'C'.
+    CONSTANTS gc_category_return      TYPE zif_zsde002_master_data=>ty_sd_document_category VALUE 'H'.
+    CONSTANTS gc_category_credit_memo TYPE zif_zsde002_master_data=>ty_sd_document_category VALUE 'K'.
+    CONSTANTS gc_category_debit_memo  TYPE zif_zsde002_master_data=>ty_sd_document_category VALUE 'L'.
 
     DATA go_master_data   TYPE REF TO zif_zsde002_master_data.
     DATA go_param         TYPE REF TO zcl_param.
     DATA gs_param         TYPE ty_param.
     DATA gs_unknown       TYPE ty_unknown.
     DATA gs_used          TYPE ty_used.
+    DATA gt_doc_category  TYPE zif_zsde002_master_data=>tt_sales_doc_category.
 
     METHODS get_constant_param
       IMPORTING io_param  TYPE REF TO zcl_param
@@ -838,6 +843,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     CLEAR gs_unknown.
     CLEAR gs_used.
+    CLEAR gt_doc_category.
 
     LOOP AT it_order ASSIGNING FIELD-SYMBOL(<lfs_order>).
 
@@ -936,7 +942,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDLOOP.
 
-    " 11 SELECT ต่อ 1 request
+    " 15 SELECT ต่อ 1 request — 11 ตัวเดิม + category 1 + duplicate check อีก 3 view
     " กลุ่ม unknown คืนค่าที่ไม่มีอยู่จริงในระบบ
     gs_unknown-sales_area          = go_master_data->find_unknown_sales_area( lt_sales_area ).
     gs_unknown-cust_sales_area     = go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ).
@@ -948,9 +954,11 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     gs_unknown-storage_location    = go_master_data->find_unknown_storage_location( lt_storage_location ).
     gs_unknown-product_unit        = go_master_data->find_unknown_product_unit( lt_product_unit ).
     gs_unknown-condition_type      = go_master_data->find_unknown_condition_type( lt_condition_type ).
+    gs_unknown-sales_document_type = go_master_data->find_unknown_sales_doc_type( lt_sales_document_type ).
 
     " กลุ่ม used คืนค่าที่มีอยู่แล้วในระบบ
     gs_used-cust_ref               = go_master_data->read_used_customer_ref( lt_customer_reference ).
+    gt_doc_category                = go_master_data->read_sales_doc_category( lt_sales_document_type ).
 
   ENDMETHOD.
 
@@ -1058,6 +1066,26 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                         sf_header_id_ref = is_order-sf_header_id_ref
                         field            = zcl_zsde002_json=>to_json_name( 'sales_order_type' )
                       ) TO rt_error.
+
+      ELSE.
+        " doc type มีจริง แต่ต้องเป็น category ที่เรามี BO ให้ — ไม่งั้น RAP จะตอบ
+        " "not a valid sales document type for SD document category Order" ซึ่งอ่านแล้วนึกว่าส่งรหัสผิด
+        DATA(lv_category) = VALUE #( gt_doc_category[ sales_document_type = lv_sales_doc_type ]-sd_document_category
+                                     OPTIONAL ).
+
+        IF lv_category <> gc_category_order
+       AND lv_category <> gc_category_return
+       AND lv_category <> gc_category_credit_memo
+       AND lv_category <> gc_category_debit_memo.
+          APPEND VALUE #( msgno            = '211'
+                          msgty            = 'E'
+                          msgtx            = message_text( iv_msgno = '211'
+                                                           iv_v1    = |{ is_order-sales_order_type }|
+                                                           iv_v2    = |{ lv_category }| )
+                          sf_header_id_ref = is_order-sf_header_id_ref
+                          field            = zcl_zsde002_json=>to_json_name( 'sales_order_type' )
+                        ) TO rt_error.
+        ENDIF.
       ENDIF.
     ENDIF.
 
@@ -1288,12 +1316,37 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
   METHOD post.
 
-    DATA(ls_result) = NEW zcl_zsde002_so_create( )->create(
-                        is_order         = cs_order
-                        it_order_pricing = it_order_pricing
-                        it_item          = it_item
-                        it_item_pricing  = it_item_pricing
-                        is_param         = gs_param ).
+    " เลือก BO ตาม SD document category ของ doc type — validate รับรองแล้วว่าเป็น 1 ใน 4 ตัวนี้
+    " category อ่านจาก I_SalesDocumentType ตอน prefetch ไม่ได้มาจาก payload หรือ mapping table
+    DATA(lv_category) = VALUE #( gt_doc_category[ sales_document_type = cs_order-sales_order_type ]-sd_document_category
+                                 OPTIONAL ).
+
+    DATA lo_creator TYPE REF TO zif_zsde002_doc_create.
+
+    CASE lv_category.
+      WHEN gc_category_order.       lo_creator = NEW zcl_zsde002_so_create( ).
+      WHEN gc_category_return.      lo_creator = NEW zcl_zsde002_ret_create( ).
+      WHEN gc_category_credit_memo. lo_creator = NEW zcl_zsde002_cmr_create( ).
+      WHEN gc_category_debit_memo.  lo_creator = NEW zcl_zsde002_dmr_create( ).
+    ENDCASE.
+
+    " ไม่ควรถึงตรงนี้เพราะ 211 ดักไว้แล้ว — กันไว้ไม่ให้ dump ถ้าวันหนึ่งมีคนแก้ลำดับ validate
+    IF lo_creator IS NOT BOUND.
+      APPEND VALUE #( msgno            = '211'
+                      msgty            = 'E'
+                      msgtx            = message_text( iv_msgno = '211'
+                                                       iv_v1    = |{ cs_order-sales_order_type }|
+                                                       iv_v2    = |{ lv_category }| )
+                      sf_header_id_ref = cs_order-sf_header_id_ref
+                    ) TO ct_error.
+      RETURN.
+    ENDIF.
+
+    DATA(ls_result) = lo_creator->create( is_order         = cs_order
+                                          it_order_pricing = it_order_pricing
+                                          it_item          = it_item
+                                          it_item_pricing  = it_item_pricing
+                                          is_param         = gs_param ).
 
     cs_order-sales_order_number = ls_result-sales_order_number.
 

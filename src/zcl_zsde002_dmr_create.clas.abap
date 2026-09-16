@@ -1,4 +1,4 @@
-CLASS zcl_zsde002_so_create DEFINITION
+CLASS zcl_zsde002_dmr_create DEFINITION
   PUBLIC
   FINAL
   CREATE PUBLIC
@@ -6,32 +6,32 @@ CLASS zcl_zsde002_so_create DEFINITION
 
   PUBLIC SECTION.
 
-    " สร้าง Sales Order (SD Document Category = C) ผ่าน I_SalesOrderTP
+    " สร้าง Dedit Memo Request (SD Document Category = L) ผ่าน I_DebitMemoRequestTP
     METHODS zif_zsde002_doc_create~create REDEFINITION.
 
 ENDCLASS.
 
 
 
-CLASS zcl_zsde002_so_create IMPLEMENTATION.
+CLASS zcl_zsde002_dmr_create IMPLEMENTATION.
 
   METHOD zif_zsde002_doc_create~create.
 
-    DATA lt_header        TYPE TABLE FOR CREATE i_salesordertp.
-    DATA lt_reference     TYPE TABLE FOR ACTION IMPORT i_salesordertp~createwithreference.
-    DATA lt_partner       TYPE TABLE FOR CREATE i_salesordertp\_Partner.
-    DATA lt_headerpricing TYPE TABLE FOR CREATE i_salesordertp\_PricingElement.
-    DATA lt_headertext    TYPE TABLE FOR CREATE i_salesordertp\_Text.
-    DATA lt_item          TYPE TABLE FOR CREATE i_salesordertp\_Item.
-    DATA lt_itempricing   TYPE TABLE FOR CREATE i_salesorderitemtp\_ItemPricingElement.
-    DATA lt_itemtext      TYPE TABLE FOR CREATE i_salesorderitemtp\_ItemText.
+    DATA lt_header        TYPE TABLE FOR CREATE i_debitmemorequesttp.
+    DATA lt_reference     TYPE TABLE FOR ACTION IMPORT i_debitmemorequesttp~createwithreference.
+    DATA lt_partner       TYPE TABLE FOR CREATE i_debitmemorequesttp\_Partner.
+    DATA lt_headerpricing TYPE TABLE FOR CREATE i_debitmemorequesttp\_PricingElement.
+    DATA lt_headertext    TYPE TABLE FOR CREATE i_debitmemorequesttp\_Text.
+    DATA lt_item          TYPE TABLE FOR CREATE i_debitmemorequesttp\_Item.
+    DATA lt_itempricing   TYPE TABLE FOR CREATE i_debitmemorequestitemtp\_ItemPricingElement.
+    DATA lt_itemtext      TYPE TABLE FOR CREATE i_debitmemorequestitemtp\_ItemText.
 
-    DATA ls_partner       TYPE STRUCTURE FOR CREATE i_salesordertp\_Partner.
-    DATA ls_headerpricing TYPE STRUCTURE FOR CREATE i_salesordertp\_PricingElement.
-    DATA ls_headertext    TYPE STRUCTURE FOR CREATE i_salesordertp\_Text.
-    DATA ls_item          TYPE STRUCTURE FOR CREATE i_salesordertp\_Item.
-    DATA ls_itempricing   TYPE STRUCTURE FOR CREATE i_salesorderitemtp\_ItemPricingElement.
-    DATA ls_itemtext      TYPE STRUCTURE FOR CREATE i_salesorderitemtp\_ItemText.
+    DATA ls_partner       TYPE STRUCTURE FOR CREATE i_debitmemorequesttp\_Partner.
+    DATA ls_headerpricing TYPE STRUCTURE FOR CREATE i_debitmemorequesttp\_PricingElement.
+    DATA ls_headertext    TYPE STRUCTURE FOR CREATE i_debitmemorequesttp\_Text.
+    DATA ls_item          TYPE STRUCTURE FOR CREATE i_debitmemorequesttp\_Item.
+    DATA ls_itempricing   TYPE STRUCTURE FOR CREATE i_debitmemorequestitemtp\_ItemPricingElement.
+    DATA ls_itemtext      TYPE STRUCTURE FOR CREATE i_debitmemorequestitemtp\_ItemText.
 
     CLEAR gt_cid_counter.
 
@@ -48,18 +48,15 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
 
       " ไม่มี original_sales_document
       APPEND VALUE #( %cid                      = gc_cid_header
-                      SalesOrderType            = is_order-sales_order_type
+                      DebitMemoRequestType      = is_order-sales_order_type
                       SalesOrganization         = is_order-sales_organization
                       DistributionChannel       = is_order-distribution_channel
                       OrganizationDivision      = is_order-division
                       SoldToParty               = is_order-sold_to_party
-                      " EDI / ONLINE ยังไม่ได้กำหนดว่าดึงจาก field ไหน คงเงื่อนไขเดิมไว้ก่อน
                       PurchaseOrderByCustomer   = COND #( WHEN is_order-process_type IN is_param-r_process_type_sfid
                                                           THEN is_order-customer_reference )
                       CustomerPurchaseOrderDate = to_internal_date( is_order-customer_reference_date )
-                      SalesOrderDate            = to_internal_date( is_order-document_date )
-                      RequestedDeliveryDate     = to_internal_date( is_order-req_delivery_date )
-                      ShippingCondition         = is_order-shipping_conditions
+                      DebitMemoRequestDate      = to_internal_date( is_order-document_date )
                       TransactionCurrency       = is_order-currency
                       CustomerPaymentTerms      = is_order-payment_term
                       SDDocumentReason          = COND #( WHEN is_order-tran_type IN is_param-r_tran_type_reason
@@ -172,18 +169,15 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
 
       DATA(lv_item_cid) = next_cid( `IT` ).
 
-      APPEND VALUE #( %cid                   = lv_item_cid
-                      Product                = zcl_zsde002_validator=>to_internal_material( <lfs_item>-material_number )
-                      MaterialByCustomer     = <lfs_item>-customer_material
-                      SalesOrderItemCategory = <lfs_item>-item_category
-                      RequestedQuantity      = to_internal_quantity( <lfs_item>-requested_quantity )
-                      RequestedQuantityUnit  = <lfs_item>-sales_unit
-                      Plant                  = <lfs_item>-plant
-                      StorageLocation        = COND #( WHEN is_order-process_type IN is_param-r_process_type_sloc
-                                                       THEN <lfs_item>-storage_location )
-                      Batch                  = COND #( WHEN is_order-process_type IN is_param-r_process_type_batch
-                                                       THEN <lfs_item>-batch )
-                      Route                  = <lfs_item>-route
+      APPEND VALUE #( %cid                         = lv_item_cid
+                      Product                      = zcl_zsde002_validator=>to_internal_material( <lfs_item>-material_number )
+                      MaterialByCustomer           = <lfs_item>-customer_material
+                      DebitMemoRequestItemCategory = <lfs_item>-item_category
+                      RequestedQuantity            = to_internal_quantity( <lfs_item>-requested_quantity )
+                      RequestedQuantityUnit        = <lfs_item>-sales_unit
+                      Plant                        = <lfs_item>-plant
+                      Batch                        = COND #( WHEN is_order-process_type IN is_param-r_process_type_batch
+                                                             THEN <lfs_item>-batch )
                     ) TO ls_item-%target.
 
       " Item Pricing ---------------------------------------------------
@@ -249,24 +243,22 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
       APPEND ls_item TO lt_item.
     ENDIF.
 
-    " Create Sales Order -----------------------------------------------
-    MODIFY ENTITIES OF i_salesordertp PRIVILEGED
-      ENTITY SalesOrder
+    " Create Debit Memo Request ----------------------------------------
+    MODIFY ENTITIES OF i_debitmemorequesttp PRIVILEGED
+      ENTITY DebitMemoRequest
         EXECUTE createwithreference
           FIELDS ( SalesDocumentType
                    ReferenceSDDocument )
           WITH lt_reference
 
-        CREATE FIELDS ( SalesOrderType
+        CREATE FIELDS ( DebitMemoRequestType
                         SalesOrganization
                         DistributionChannel
                         OrganizationDivision
                         SoldToParty
                         PurchaseOrderByCustomer
                         CustomerPurchaseOrderDate
-                        SalesOrderDate
-                        RequestedDeliveryDate
-                        ShippingCondition
+                        DebitMemoRequestDate
                         TransactionCurrency
                         CustomerPaymentTerms
                         SDDocumentReason )
@@ -294,16 +286,14 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
         CREATE BY \_Item
           FIELDS ( Product
                    MaterialByCustomer
-                   SalesOrderItemCategory
+                   DebitMemoRequestItemCategory
                    RequestedQuantity
                    RequestedQuantityUnit
                    Plant
-                   StorageLocation
-                   Batch
-                   Route )
+                   Batch )
           WITH lt_item
 
-      ENTITY SalesOrderItem
+      ENTITY DebitMemoRequestItem
         CREATE BY \_ItemPricingElement
           FIELDS ( ConditionType
                    ConditionRateAmount
@@ -338,13 +328,13 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
 
     " Commit -----------------------------------------------------------
     COMMIT ENTITIES BEGIN
-      RESPONSE OF i_salesordertp
+      RESPONSE OF i_debitmemorequesttp
       FAILED   DATA(ls_commit_failed)
       REPORTED DATA(ls_commit_reported).
 
-    IF ls_commit_failed-salesorder IS INITIAL.
-      LOOP AT ls_mapped-salesorder ASSIGNING FIELD-SYMBOL(<lfs_key>).
-        CONVERT KEY OF i_salesordertp FROM <lfs_key>-%pid TO <lfs_key>-%key.
+    IF ls_commit_failed-debitmemorequest IS INITIAL.
+      LOOP AT ls_mapped-debitmemorequest ASSIGNING FIELD-SYMBOL(<lfs_key>).
+        CONVERT KEY OF i_debitmemorequesttp FROM <lfs_key>-%pid TO <lfs_key>-%key.
       ENDLOOP.
     ENDIF.
 
@@ -362,8 +352,8 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
     ENDIF.
 
     " SD Document Number -----------------------------------------------
-    LOOP AT ls_mapped-salesorder ASSIGNING <lfs_key>.
-      rs_result-sales_order_number = <lfs_key>-SalesOrder.
+    LOOP AT ls_mapped-debitmemorequest ASSIGNING <lfs_key>.
+      rs_result-sales_order_number = <lfs_key>-DebitMemoRequest.
     ENDLOOP.
 
     IF rs_result-sales_order_number IS NOT INITIAL.
@@ -371,7 +361,6 @@ CLASS zcl_zsde002_so_create IMPLEMENTATION.
                              iv_sf_header_id_ref = is_order-sf_header_id_ref
                    CHANGING  ct_error            = rs_result-errors ).
     ELSE.
-      " Commit ผ่านแต่ไม่ได้เลขเอกสารกลับมา (ไม่ควรเกิด)
       add_summary( EXPORTING iv_msgno            = '501'
                              iv_sf_header_id_ref = is_order-sf_header_id_ref
                    CHANGING  ct_error            = rs_result-errors ).

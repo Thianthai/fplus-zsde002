@@ -2,13 +2,14 @@ INTERFACE zif_zsde002_master_data
   PUBLIC .
 
   TYPES:
-    ty_sales_document_type TYPE I_SalesDocumentType-SalesDocumentType,
-    ty_payment_terms       TYPE I_PaymentTerms-PaymentTerms,
-    ty_product             TYPE I_Product-Product,
-    ty_plant               TYPE I_Plant-Plant,
-    ty_condition_type      TYPE I_ConditionType-ConditionType,
-    ty_currency            TYPE I_Currency-Currency,
-    ty_customer_reference  TYPE I_SalesOrder-PurchaseOrderByCustomer.
+    ty_sales_document_type  TYPE I_SalesDocumentType-SalesDocumentType,
+    ty_payment_terms        TYPE I_PaymentTerms-PaymentTerms,
+    ty_product              TYPE I_Product-Product,
+    ty_plant                TYPE I_Plant-Plant,
+    ty_condition_type       TYPE I_ConditionType-ConditionType,
+    ty_currency             TYPE I_Currency-Currency,
+    ty_customer_reference   TYPE I_SalesOrder-PurchaseOrderByCustomer,
+    ty_sd_document_category TYPE I_SalesDocumentType-SDDocumentCategory.
 
   TYPES:
     "! Process type mapping — เฉพาะ field ที่ validation ใช้
@@ -45,7 +46,13 @@ INTERFACE zif_zsde002_master_data
     BEGIN OF ty_storage_location,
       plant            TYPE I_StorageLocation-Plant,
       storage_location TYPE I_StorageLocation-StorageLocation,
-    END OF ty_storage_location.
+    END OF ty_storage_location,
+
+    "! doc type → SD document category — ตัวที่บอกว่าเอกสารนี้ต้องสร้างผ่าน BO ไหน
+    BEGIN OF ty_sales_doc_category,
+      sales_document_type  TYPE ty_sales_document_type,
+      sd_document_category TYPE ty_sd_document_category,
+    END OF ty_sales_doc_category.
 
   TYPES:
     tt_process_type        TYPE SORTED TABLE OF ty_process_type
@@ -71,7 +78,9 @@ INTERFACE zif_zsde002_master_data
     tt_cust_sales_area     TYPE SORTED TABLE OF ty_cust_sales_area
                            WITH UNIQUE KEY sales_organization distribution_channel division customer,
     tt_customer_reference  TYPE SORTED TABLE OF ty_customer_reference
-                           WITH UNIQUE KEY table_line.
+                           WITH UNIQUE KEY table_line,
+    tt_sales_doc_category  TYPE SORTED TABLE OF ty_sales_doc_category
+                           WITH UNIQUE KEY sales_document_type.
 
   "! อ่าน process type mapping ทั้งใบ — ต่างจาก find_unknown_* ตรงที่คืนทุกแถว
   "! ไม่ใช่เฉพาะที่หาไม่เจอ เพราะ validation ต้องเทียบค่าใน row ไม่ใช่แค่เช็คว่ามีอยู่
@@ -84,6 +93,14 @@ INTERFACE zif_zsde002_master_data
   METHODS read_used_customer_ref
     IMPORTING it_key           TYPE tt_customer_reference
     RETURNING VALUE(rt_result) TYPE tt_customer_reference.
+
+  "! อ่าน SD document category ของ doc type ที่ส่งมา คืนเฉพาะตัวที่มีอยู่จริง
+  "! C = order → I_SalesOrderTP · H = return → I_CustomerReturnTP
+  "! K = credit memo → I_CreditMemoRequestTP · L = debit memo → I_DebitMemoRequestTP
+  "! แยกจาก find_unknown_sales_doc_type เพราะตัวนั้นคืน "ที่ไม่เจอ" ส่วนตัวนี้คืน "ที่เจอพร้อม category"
+  METHODS read_sales_doc_category
+    IMPORTING it_key           TYPE tt_sales_document_type
+    RETURNING VALUE(rt_result) TYPE tt_sales_doc_category.
 
   METHODS find_unknown_sales_area
     IMPORTING it_key           TYPE tt_sales_area

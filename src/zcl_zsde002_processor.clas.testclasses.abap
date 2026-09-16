@@ -1,10 +1,12 @@
 CLASS ltcl_duplicate   DEFINITION DEFERRED.
 CLASS ltcl_pretty_json DEFINITION DEFERRED.
 CLASS ltcl_order_out   DEFINITION DEFERRED.
+CLASS ltcl_dispatch    DEFINITION DEFERRED.
 
 CLASS zcl_zsde002_processor DEFINITION LOCAL FRIENDS ltcl_duplicate
                                                      ltcl_pretty_json
-                                                     ltcl_order_out.
+                                                     ltcl_order_out
+                                                     ltcl_dispatch.
 
 "! test double — ทุก method คืนค่าว่าง แปลว่า master data ครบและยังไม่มี reference ไหนถูกใช้
 CLASS ltd_master_data DEFINITION FINAL.
@@ -376,6 +378,69 @@ CLASS ltcl_order_out IMPLEMENTATION.
     cl_abap_unit_assert=>assert_equals( act = lt_out[ 1 ]-status exp = 'W' ).
     cl_abap_unit_assert=>assert_equals( act = lt_out[ 2 ]-status exp = 'E' ).
     cl_abap_unit_assert=>assert_equals( act = lt_out[ 2 ]-code   exp = `501` ).
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
+CLASS ltcl_dispatch DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+
+    DATA go_cut TYPE REF TO zcl_zsde002_processor.
+
+    METHODS setup.
+
+    METHODS unsupported_category_gets_211 FOR TESTING.
+    METHODS unknown_type_gets_211_not_dump FOR TESTING.
+
+ENDCLASS.
+
+
+CLASS ltcl_dispatch IMPLEMENTATION.
+
+  METHOD setup.
+    go_cut = NEW zcl_zsde002_processor( io_master_data = NEW ltd_master_data( ) ).
+    go_cut->gt_doc_category = VALUE #( ( sales_document_type = 'QT' sd_document_category = 'B' ) ).
+  ENDMETHOD.
+
+  METHOD unsupported_category_gets_211.
+
+    " quotation (B) มีอยู่จริงใน SAP แต่เราไม่มี BO ให้ — ต้องได้ 211 ไม่ใช่ปล่อยไปให้ RAP ตอบเอง
+    DATA ls_order TYPE zcl_zsde002_processor=>ty_order.
+    ls_order-sales_order_type = 'QT'.
+    ls_order-sf_header_id_ref = 'SF-001'.
+
+    DATA lt_error TYPE zcl_zsde002_processor=>tt_error.
+    go_cut->post( EXPORTING it_order_pricing = VALUE #( )
+                            it_item          = VALUE #( )
+                            it_item_pricing  = VALUE #( )
+                  CHANGING  cs_order         = ls_order
+                            ct_error         = lt_error ).
+
+    cl_abap_unit_assert=>assert_equals( act = lines( lt_error ) exp = 1 ).
+    cl_abap_unit_assert=>assert_equals( act = lt_error[ 1 ]-msgno exp = '211' ).
+    cl_abap_unit_assert=>assert_initial( ls_order-sales_order_number ).
+
+  ENDMETHOD.
+
+  METHOD unknown_type_gets_211_not_dump.
+
+    " doc type ที่ไม่อยู่ใน gt_doc_category เลย → category ว่าง → 211 เหมือนกัน ไม่ dump
+    DATA ls_order TYPE zcl_zsde002_processor=>ty_order.
+    ls_order-sales_order_type = 'XXXX'.
+
+    DATA lt_error TYPE zcl_zsde002_processor=>tt_error.
+    go_cut->post( EXPORTING it_order_pricing = VALUE #( )
+                            it_item          = VALUE #( )
+                            it_item_pricing  = VALUE #( )
+                  CHANGING  cs_order         = ls_order
+                            ct_error         = lt_error ).
+
+    cl_abap_unit_assert=>assert_equals( act = lt_error[ 1 ]-msgno exp = '211' ).
 
   ENDMETHOD.
 

@@ -37,9 +37,12 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
     lr_customer_reference = VALUE #( FOR <lfs_for> IN it_key
                                    ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
 
-    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่าน sales order
+    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่านเอกสารขาย
     " อ่านเพื่อเช็คว่า reference เคยถูกใช้แล้วหรือยังเท่านั้น ไม่ได้ส่งข้อมูลกลับไปให้ผู้เรียก
     " ใบที่ถูก reject ทั้งใบไม่นับว่าเคยใช้ SBPA จะได้ยิงซ้ำเพื่อแก้ของที่ผิดได้
+    " เช็คข้ามทุกประเภทเอกสาร (business ยืนยัน 2026-09-16) — reference หนึ่งค่าใช้ได้ครั้งเดียว
+    " ไม่ว่าจะเป็น order / credit memo / debit memo / return · rt_result เป็น sorted unique
+    " จึง INSERT ซ้ำจากคนละ view ได้โดยไม่ต้อง DISTINCT ข้าม view
     SELECT FROM I_SalesOrder WITH PRIVILEGED ACCESS
       FIELDS DISTINCT PurchaseOrderByCustomer
       WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
@@ -49,6 +52,55 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
     LOOP AT lt_used ASSIGNING FIELD-SYMBOL(<lfs_used>).
       INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
     ENDLOOP.
+
+    SELECT FROM I_CreditMemoRequest WITH PRIVILEGED ACCESS
+      FIELDS DISTINCT PurchaseOrderByCustomer
+      WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
+        AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
+      INTO TABLE @lt_used.
+
+    LOOP AT lt_used ASSIGNING <lfs_used>.
+      INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
+    ENDLOOP.
+
+    SELECT FROM I_DebitMemoRequest WITH PRIVILEGED ACCESS
+      FIELDS DISTINCT PurchaseOrderByCustomer
+      WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
+        AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
+      INTO TABLE @lt_used.
+
+    LOOP AT lt_used ASSIGNING <lfs_used>.
+      INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
+    ENDLOOP.
+
+    SELECT FROM I_CustomerReturn WITH PRIVILEGED ACCESS
+      FIELDS DISTINCT PurchaseOrderByCustomer
+      WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
+        AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
+      INTO TABLE @lt_used.
+
+    LOOP AT lt_used ASSIGNING <lfs_used>.
+      INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+  METHOD zif_zsde002_master_data~read_sales_doc_category.
+
+    DATA lr_sales_document_type TYPE RANGE OF zif_zsde002_master_data=>ty_sales_document_type.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    lr_sales_document_type = VALUE #( FOR <lfs_for> IN it_key
+                                    ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+
+    SELECT FROM I_SalesDocumentType
+      FIELDS SalesDocumentType   AS sales_document_type,
+             SDDocumentCategory  AS sd_document_category
+      WHERE SalesDocumentType IN @lr_sales_document_type
+      INTO TABLE @rt_result.
 
   ENDMETHOD.
 
