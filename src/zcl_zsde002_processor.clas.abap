@@ -176,14 +176,6 @@ CLASS zcl_zsde002_processor DEFINITION
       IMPORTING it_value         TYPE string_table
       RETURNING VALUE(rt_result) TYPE string_table.
 
-    "! หยิบ sales document type จาก mapping table ตาม process type
-    "! ไม่ใช้ค่าจาก payload เพราะ SBPA ส่งรหัสภายนอกที่เห็นในหน้าจอ (CR) แต่ SAP ต้องการ
-    "! รหัสภายใน (G2) และ ABAP Cloud ไม่มี conversion exit ให้แปลง — mapping table
-    "! เก็บรหัสภายในไว้อยู่แล้วเพราะ BCMO แปลงให้ตอนกรอก
-    METHODS derive_sales_order_type
-      IMPORTING iv_process_type  TYPE ty_order-process_type
-      RETURNING VALUE(rv_result) TYPE ty_order-sales_order_type.
-
     METHODS save
       IMPORTING is_order         TYPE ty_order
                 it_order_pricing TYPE tt_order_pricing
@@ -311,11 +303,16 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                               |{ cl_abap_context_info=>get_system_time( ) }|.
     ENDIF.
 
-    IF strlen( ls_request-request_id ) > 20.
+    " ยาวเกินความกว้างของ column จะถูกตัดตอน INSERT — เตือนให้ SBPA รู้ว่าค่าที่เก็บไม่ครบ
+    " อ้างความยาวจาก type ของ column ตรงๆ จะได้ไม่ต้องตามแก้เลขตรงนี้ตอนขยาย column ครั้งหน้า
+    DATA(lv_max_len) = cl_abap_typedescr=>describe_by_name( 'ZTSD_E002_ORDER-REQUEST_ID' )->length
+                       / cl_abap_char_utilities=>charsize.
+
+    IF strlen( ls_request-request_id ) > lv_max_len.
       add_request_message( EXPORTING iv_msgno = '014'
                                      iv_msgty = 'W'
                                      iv_v1    = ls_request-request_id
-                                     iv_v2    = `20`
+                                     iv_v2    = |{ lv_max_len }|
                            CHANGING  cs_result = rs_result ).
     ENDIF.
 
@@ -1237,14 +1234,6 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       ENDIF.
 
     ENDLOOP.
-
-  ENDMETHOD.
-
-
-  METHOD derive_sales_order_type.
-
-    rv_result = VALUE #( gs_param-t_process_type[ process_type = iv_process_type ]-sales_order_type
-                         OPTIONAL ).
 
   ENDMETHOD.
 
