@@ -6,7 +6,6 @@ CLASS zcl_zsde002_processor DEFINITION LOCAL FRIENDS ltcl_duplicate
                                                      ltcl_pretty_json
                                                      ltcl_order_out.
 
-
 "! test double — ทุก method คืนค่าว่าง แปลว่า master data ครบและยังไม่มี reference ไหนถูกใช้
 CLASS ltd_master_data DEFINITION FINAL.
   PUBLIC SECTION.

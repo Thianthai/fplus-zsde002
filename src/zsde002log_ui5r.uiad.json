@@ -13,7 +13,7 @@
     "appId": "com.fplus.sd.zsde002log"
   },
   "navigation": {
-    "targetMappingId": "ZSDE002LOG_UI5_TM",
+    "targetMappingId": "ZSDE002LOG_UI5R_TM",
     "semanticObject": "ZSDE002LOG",
     "action": "manage",
     "desktop": true,
@@ -22,7 +22,7 @@
   },
   "tiles": [
     {
-      "id": "ZSDE002LOG_UI5_AL",
+      "id": "ZSDE002LOG_UI5R_AL",
       "tileType": "static",
       "standard": {
         "title": "Interface Log for Sales Order Creation",

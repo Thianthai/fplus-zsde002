@@ -250,3 +250,37 @@ CLASS ltcl_unit IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+
+
+CLASS ltcl_sales_doc_type DEFINITION FINAL FOR TESTING
+  DURATION SHORT
+  RISK LEVEL HARMLESS.
+
+  PRIVATE SECTION.
+    METHODS cr_becomes_g2           FOR TESTING.
+    METHODS custom_type_passes_thru FOR TESTING.
+    METHODS blank_stays_blank       FOR TESTING.
+
+ENDCLASS.
+
+
+CLASS ltcl_sales_doc_type IMPLEMENTATION.
+
+  METHOD cr_becomes_g2.
+    " SBPA เห็น CR ในหน้าจอจึงส่ง CR แต่ DB และ mapping table เก็บ G2
+    cl_abap_unit_assert=>assert_equals( act = zcl_zsde002_validator=>to_internal_sales_doc_type( `CR` )
+                                        exp = 'G2' ).
+  ENDMETHOD.
+
+  METHOD custom_type_passes_thru.
+    cl_abap_unit_assert=>assert_equals( act = zcl_zsde002_validator=>to_internal_sales_doc_type( `CCFU` )
+                                        exp = 'CCFU' ).
+  ENDMETHOD.
+
+  METHOD blank_stays_blank.
+    " ต้องคงว่างไว้ให้ mandatory check จับ ห้ามแปลงเป็นอะไร
+    cl_abap_unit_assert=>assert_initial( zcl_zsde002_validator=>to_internal_sales_doc_type( `` ) ).
+  ENDMETHOD.
+
+ENDCLASS.
+

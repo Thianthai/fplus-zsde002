@@ -176,6 +176,14 @@ CLASS zcl_zsde002_processor DEFINITION
       IMPORTING it_value         TYPE string_table
       RETURNING VALUE(rt_result) TYPE string_table.
 
+    "! หยิบ sales document type จาก mapping table ตาม process type
+    "! ไม่ใช้ค่าจาก payload เพราะ SBPA ส่งรหัสภายนอกที่เห็นในหน้าจอ (CR) แต่ SAP ต้องการ
+    "! รหัสภายใน (G2) และ ABAP Cloud ไม่มี conversion exit ให้แปลง — mapping table
+    "! เก็บรหัสภายในไว้อยู่แล้วเพราะ BCMO แปลงให้ตอนกรอก
+    METHODS derive_sales_order_type
+      IMPORTING iv_process_type  TYPE ty_order-process_type
+      RETURNING VALUE(rv_result) TYPE ty_order-sales_order_type.
+
     METHODS save
       IMPORTING is_order         TYPE ty_order
                 it_order_pricing TYPE tt_order_pricing
@@ -610,6 +618,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     cs_order-payer         = zcl_zsde002_validator=>to_internal_customer( cs_order-payer ).
     cs_order-stock_van     = zcl_zsde002_validator=>to_internal_customer( cs_order-stock_van ).
 
+    " Sales Document Type — แปลงรหัสภายนอกเป็นภายในก่อน validate (ดู to_internal_sales_doc_type)
+    cs_order-sales_order_type = zcl_zsde002_validator=>to_internal_sales_doc_type( cs_order-sales_order_type ).
+
     " 2. Order Pricing -------------------------------------------------
     LOOP AT ct_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
 
@@ -867,9 +878,9 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
       ENDIF.
 
-      " Sales Document Type
+      " Sales Document Type — แปลงรหัสภายนอกก่อน เหมือน normalize_order
       IF <lfs_order>-sales_order_type IS NOT INITIAL.
-        lv_sales_doc_type = <lfs_order>-sales_order_type.
+        lv_sales_doc_type = zcl_zsde002_validator=>to_internal_sales_doc_type( <lfs_order>-sales_order_type ).
         INSERT lv_sales_doc_type INTO TABLE lt_sales_document_type.
       ENDIF.
 
@@ -1226,6 +1237,14 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
       ENDIF.
 
     ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD derive_sales_order_type.
+
+    rv_result = VALUE #( gs_param-t_process_type[ process_type = iv_process_type ]-sales_order_type
+                         OPTIONAL ).
 
   ENDMETHOD.
 

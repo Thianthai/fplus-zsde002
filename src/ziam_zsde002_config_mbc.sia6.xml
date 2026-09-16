@@ -4,7 +4,7 @@
   <asx:values>
    <SIA6>
     <MAIN_OBJECT>
-     <NAME>ZIAM_PROCESSTYPE_MAINTAIN_MBC</NAME>
+     <NAME>ZIAM_ZSDE002_CONFIG_MBC</NAME>
      <TYPE>SIA6</TYPE>
      <DESCRIPTION>IAM App for Maintain Process Type Mapping Data</DESCRIPTION>
      <RESPONSIBLE>CB9980000032</RESPONSIBLE>
@@ -15,14 +15,14 @@
      </PACKAGE_REF>
      <ABAP_LANGU_VERSION>5</ABAP_LANGU_VERSION>
     </MAIN_OBJECT>
-    <APP_ID>ZIAM_PROCESSTYPE_MAINTAIN_MBC</APP_ID>
+    <APP_ID>ZIAM_ZSDE002_CONFIG_MBC</APP_ID>
     <APP_TYPE>MBC</APP_TYPE>
     <ABAP_LANGUAGE_VERSION>5</ABAP_LANGUAGE_VERSION>
     <SERVICE>
      <item>
       <REL_NAME>ZUI_PROCESSTYPEMAPPINGD_O4</REL_NAME>
       <REL_TYPE>G4BA</REL_TYPE>
-      <APP_ID>ZIAM_PROCESSTYPE_MAINTAIN_MBC</APP_ID>
+      <APP_ID>ZIAM_ZSDE002_CONFIG_MBC</APP_ID>
       <SRVC_NAME>1F6CDB289D726C6294FE95A19A2B25</SRVC_NAME>
       <SRVC_TYPE>HT</SRVC_TYPE>
       <TEXT>Maintain Process Type Mapping Data</TEXT>
@@ -36,7 +36,7 @@
       <TEXT>Table Access by Generic Standard Tools</TEXT>
       <AUTH_ITEM>
        <item>
-        <UUID>+hY+GV8uH+GqnbmWtHcjxg==</UUID>
+        <UUID>+hY+GV8uH+GsooEIDwRkSw==</UUID>
         <AUTH_OBJECT>S_TABU_NAM</AUTH_OBJECT>
         <AUTH_OBJECT_INSTANCE>0001</AUTH_OBJECT_INSTANCE>
         <TEXT>Table Access by Generic Standard Tools</TEXT>
@@ -47,11 +47,11 @@
           <VALUE>Change,Display</VALUE>
           <VALUES>
            <item>
-            <UUID>+hY+GV8uH+GqnbmWtHdDxg==</UUID>
+            <UUID>+hY+GV8uH+GsooEIDwSESw==</UUID>
             <LOW_VALUE>02</LOW_VALUE>
            </item>
            <item>
-            <UUID>+hY+GV8uH+GqnbmWtHdjxg==</UUID>
+            <UUID>+hY+GV8uH+GsooEIDwSkSw==</UUID>
             <LOW_VALUE>03</LOW_VALUE>
            </item>
           </VALUES>
@@ -64,7 +64,7 @@
           <VALUE>ZI_PROCESSTYPEMAPPINGD</VALUE>
           <VALUES>
            <item>
-            <UUID>+hY+GV8uH+GqnbmWtHeDxg==</UUID>
+            <UUID>+hY+GV8uH+GsooEIDwTESw==</UUID>
             <LOW_VALUE>ZI_PROCESSTYPEMAPPINGD</LOW_VALUE>
            </item>
           </VALUES>

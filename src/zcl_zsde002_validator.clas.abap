@@ -36,6 +36,10 @@ CLASS zcl_zsde002_validator DEFINITION
       IMPORTING iv_value         TYPE clike
       RETURNING VALUE(rv_result) TYPE I_ProductUnitsOfMeasure-AlternativeUnit.
 
+    CLASS-METHODS to_internal_sales_doc_type
+      IMPORTING iv_value         TYPE clike
+      RETURNING VALUE(rv_result) TYPE I_SalesDocumentType-SalesDocumentType.
+
     CLASS-METHODS is_valid_date
       IMPORTING iv_value         TYPE clike
       RETURNING VALUE(rv_result) TYPE abap_bool.
@@ -151,6 +155,20 @@ CLASS zcl_zsde002_validator IMPLEMENTATION.
     " SBPA เรียกหน่วยลังว่า CAR ส่วน SAP เก็บเป็น KAR
     " ต้องแปลงก่อน validate ไม่งั้น sales_unit จะไปตกที่ message 253
     rv_result = COND #( WHEN iv_value = 'CAR' THEN 'KAR' ELSE iv_value ).
+
+  ENDMETHOD.
+
+
+  METHOD to_internal_sales_doc_type.
+
+    " sales document type มาตรฐานของ SAP มีรหัสภายนอกที่แสดงในหน้าจอต่างจากรหัสภายในที่เก็บ
+    " (conversion routine AUART) — SBPA ส่งรหัสภายนอกมาเพราะเห็นแบบนั้นในหน้าจอ
+    " ABAP Cloud ไม่มี conversion exit ให้เรียก จึง hardcode คู่ที่พบไว้ก่อน
+    " custom type (Z*, CC*, CB*) รหัสเดียวกันทั้งสองชั้น ผ่านไปตรงๆ
+    " ถ้าจะเพิ่มคู่ใหม่ ให้ยืนยันจาก BCMO ก่อน: กรอกรหัสภายนอกแล้วดูว่า DB เก็บอะไร
+    rv_result = SWITCH #( iv_value
+                          WHEN 'CR' THEN 'G2'
+                          ELSE iv_value ).
 
   ENDMETHOD.
 
