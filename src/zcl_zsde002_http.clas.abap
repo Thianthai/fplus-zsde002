@@ -134,10 +134,6 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
 
   METHOD if_http_service_extension~handle_request.
 
-    response->set_status( i_code   = 400
-                          i_reason = 'Bad Request' ).
-    RETURN.
-
     CASE request->get_method( ).
       WHEN 'GET'.
         handle_get( CHANGING co_http_response = response ).
