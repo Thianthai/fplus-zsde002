@@ -19,7 +19,7 @@
     <MAIN_OBJECT>
      <NAME>ZCS_SO_CREATE</NAME>
      <TYPE>SCO1</TYPE>
-     <DESCRIPTION>Communication Scenario for Sales Order Creation</DESCRIPTION>
+     <DESCRIPTION>SDE002 - Sales Order Creation (API)</DESCRIPTION>
      <ABAP_LANGU_VERSION>5</ABAP_LANGU_VERSION>
     </MAIN_OBJECT>
     <SCOPE_STATUS>3</SCOPE_STATUS>

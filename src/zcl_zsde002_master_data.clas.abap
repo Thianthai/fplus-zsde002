@@ -13,6 +13,7 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
   METHOD zif_zsde002_master_data~read_process_type.
 
+    " ต้องอ่านทั้งตารางเนื่องจาก mapping table เป็น config และ validate ต้องใช้ทุกแถว
     SELECT FROM ztsd_prcs_ty
       FIELDS process_type,
              tran_type,
@@ -20,7 +21,7 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
              sales_organization,
              distribution_channel,
              division
-      INTO TABLE @rt_result.
+      INTO TABLE @rt_result.                             "#EC CI_NOWHERE
 
   ENDMETHOD.
 

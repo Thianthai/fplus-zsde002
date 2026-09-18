@@ -15,18 +15,19 @@ CLASS ltd_master_data DEFINITION FINAL.
 ENDCLASS.
 
 CLASS ltd_master_data IMPLEMENTATION.
-  METHOD zif_zsde002_master_data~read_process_type.           ENDMETHOD.
-  METHOD zif_zsde002_master_data~read_used_customer_ref.      ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_sales_area.     ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_cust_sales_area. ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_sales_doc_type. ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_payment_terms.  ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_product.        ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_plant.          ENDMETHOD.
+  METHOD zif_zsde002_master_data~read_process_type.             ENDMETHOD.
+  METHOD zif_zsde002_master_data~read_used_customer_ref.        ENDMETHOD.
+  METHOD zif_zsde002_master_data~read_sales_doc_category.       ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_sales_area.       ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_cust_sales_area.  ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_sales_doc_type.   ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_payment_terms.    ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_product.          ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_plant.            ENDMETHOD.
   METHOD zif_zsde002_master_data~find_unknown_storage_location. ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_product_unit.   ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_condition_type. ENDMETHOD.
-  METHOD zif_zsde002_master_data~find_unknown_currency.       ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_product_unit.     ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_condition_type.   ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_currency.         ENDMETHOD.
 ENDCLASS.
 
 
