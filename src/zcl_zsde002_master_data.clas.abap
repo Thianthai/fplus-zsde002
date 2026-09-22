@@ -9,7 +9,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_master_data IMPLEMENTATION.
+CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
+
 
   METHOD zif_zsde002_master_data~read_process_type.
 
@@ -24,6 +25,7 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
       INTO TABLE @rt_result.                             "#EC CI_NOWHERE
 
   ENDMETHOD.
+
 
   METHOD zif_zsde002_master_data~read_used_customer_ref.
 
@@ -86,6 +88,7 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD zif_zsde002_master_data~read_sales_doc_category.
 
     DATA lr_sales_document_type TYPE RANGE OF zif_zsde002_master_data=>ty_sales_document_type.
@@ -104,6 +107,30 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
       INTO TABLE @rt_result.
 
   ENDMETHOD.
+
+
+  METHOD zif_zsde002_master_data~read_condition_calc_type.
+
+    CONSTANTS lc_application_pricing TYPE I_PricingConditionType-ConditionApplication VALUE 'V'.
+
+    DATA lr_condition_type TYPE RANGE OF zif_zsde002_master_data=>ty_condition_type.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    lr_condition_type = VALUE #( FOR <lfs_for> IN it_key
+                               ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+
+    SELECT FROM I_PricingConditionType
+      FIELDS ConditionType            AS condition_type,
+             ConditionCalculationType AS calculation_type
+      WHERE ConditionApplication = @lc_application_pricing
+        AND ConditionType       IN @lr_condition_type
+      INTO TABLE @rt_result.
+
+  ENDMETHOD.
+
 
   METHOD zif_zsde002_master_data~find_unknown_sales_area.
 
@@ -446,5 +473,4 @@ CLASS zcl_zsde002_master_data IMPLEMENTATION.
     ENDLOOP.
 
   ENDMETHOD.
-
 ENDCLASS.

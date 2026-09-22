@@ -9,7 +9,8 @@ INTERFACE zif_zsde002_master_data
     ty_condition_type       TYPE I_ConditionType-ConditionType,
     ty_currency             TYPE I_Currency-Currency,
     ty_customer_reference   TYPE I_SalesOrder-PurchaseOrderByCustomer,
-    ty_sd_document_category TYPE I_SalesDocumentType-SDDocumentCategory.
+    ty_sd_document_category TYPE I_SalesDocumentType-SDDocumentCategory,
+    ty_calculation_type     TYPE I_PricingConditionType-ConditionCalculationType.
 
   TYPES:
     "! Process type mapping — เฉพาะ field ที่ validation ใช้
@@ -52,7 +53,17 @@ INTERFACE zif_zsde002_master_data
     BEGIN OF ty_sales_doc_category,
       sales_document_type  TYPE ty_sales_document_type,
       sd_document_category TYPE ty_sd_document_category,
-    END OF ty_sales_doc_category.
+    END OF ty_sales_doc_category,
+
+    "! condition type to calculation type — บอกว่า condition รับ field ชุดไหน
+    "! C = ต่อหน่วย (amount + currency + quantity + unit)
+    "! B = จำนวนเงินคงที่ (amount + currency)
+    "! A = เปอร์เซ็นต์ (ratio + '%' อย่างเดียว)
+    "! ส่ง field ที่ไม่รับไปจะโดน RAP ปฏิเสธ
+    BEGIN OF ty_condition_calc_type,
+      condition_type   TYPE ty_condition_type,
+      calculation_type TYPE ty_calculation_type,
+    END OF ty_condition_calc_type.
 
   TYPES:
     tt_process_type        TYPE SORTED TABLE OF ty_process_type
@@ -80,7 +91,9 @@ INTERFACE zif_zsde002_master_data
     tt_customer_reference  TYPE SORTED TABLE OF ty_customer_reference
                            WITH UNIQUE KEY table_line,
     tt_sales_doc_category  TYPE SORTED TABLE OF ty_sales_doc_category
-                           WITH UNIQUE KEY sales_document_type.
+                           WITH UNIQUE KEY sales_document_type,
+    tt_condition_calc_type TYPE SORTED TABLE OF ty_condition_calc_type
+                           WITH UNIQUE KEY condition_type.
 
   "! อ่าน process type mapping ทั้งใบ — ต่างจาก find_unknown_* ตรงที่คืนทุกแถว
   "! ไม่ใช่เฉพาะที่หาไม่เจอ เพราะ validation ต้องเทียบค่าใน row ไม่ใช่แค่เช็คว่ามีอยู่
@@ -101,6 +114,12 @@ INTERFACE zif_zsde002_master_data
   METHODS read_sales_doc_category
     IMPORTING it_key           TYPE tt_sales_document_type
     RETURNING VALUE(rt_result) TYPE tt_sales_doc_category.
+
+  "! อ่าน calculation type ของ condition type ที่ส่งมา คืนเฉพาะที่เป็น SD pricing condition จริง
+  "! (I_PricingConditionType application V) — ตัวที่มีใน I_ConditionType แต่ไม่มีที่นี่คือไม่ใช่ condition สำหรับ pricing ใช้กับ sales document ไม่ได้
+  METHODS read_condition_calc_type
+    IMPORTING it_key           TYPE tt_condition_type
+    RETURNING VALUE(rt_result) TYPE tt_condition_calc_type.
 
   METHODS find_unknown_sales_area
     IMPORTING it_key           TYPE tt_sales_area

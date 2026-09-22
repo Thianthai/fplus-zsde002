@@ -13,7 +13,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_dmr_create IMPLEMENTATION.
+CLASS ZCL_ZSDE002_DMR_CREATE IMPLEMENTATION.
+
 
   METHOD zif_zsde002_doc_create~create.
 
@@ -102,17 +103,34 @@ CLASS zcl_zsde002_dmr_create IMPLEMENTATION.
     ENDIF.
 
     " Header Pricing ---------------------------------------------------
+    " ส่งเฉพาะ field ที่ condition type รับ (ตาม calculation type) ผ่าน %control
     ls_headerpricing-%cid_ref = gc_cid_header.
 
     LOOP AT it_order_pricing ASSIGNING FIELD-SYMBOL(<lfs_order_pricing>).
       CHECK <lfs_order_pricing>-condition_type IS NOT INITIAL.
 
-      APPEND VALUE #( %cid                  = next_cid( `HP` )
-                      ConditionType         = <lfs_order_pricing>-condition_type
-                      ConditionRateAmount   = to_internal_amount( <lfs_order_pricing>-condition_amount )
-                      ConditionCurrency     = <lfs_order_pricing>-condition_currency
-                      ConditionQuantity     = to_internal_quantity( <lfs_order_pricing>-condition_pricing_unit )
-                      ConditionQuantityUnit = <lfs_order_pricing>-condition_unit_of_measure
+      DATA(ls_hp_values) = to_condition_values( iv_condition_type = <lfs_order_pricing>-condition_type
+                                                iv_amount         = <lfs_order_pricing>-condition_amount
+                                                iv_currency       = <lfs_order_pricing>-condition_currency
+                                                iv_pricing_unit   = <lfs_order_pricing>-condition_pricing_unit
+                                                iv_unit           = <lfs_order_pricing>-condition_unit_of_measure
+                                                it_calc_type      = is_param-t_condition_calc_type ).
+
+      APPEND VALUE #( %cid                   = next_cid( `HP` )
+                      ConditionType          = <lfs_order_pricing>-condition_type
+                      ConditionRateAmount    = ls_hp_values-rate_amount
+                      ConditionRateRatio     = ls_hp_values-rate_ratio
+                      ConditionRateRatioUnit = ls_hp_values-ratio_unit
+                      ConditionCurrency      = ls_hp_values-currency
+                      ConditionQuantity      = ls_hp_values-quantity
+                      ConditionQuantityUnit  = ls_hp_values-quantity_unit
+                      %control               = VALUE #( ConditionType          = if_abap_behv=>mk-on
+                                                        ConditionRateAmount    = control_flag( ls_hp_values-send_amount )
+                                                        ConditionRateRatio     = control_flag( ls_hp_values-send_ratio )
+                                                        ConditionRateRatioUnit = control_flag( ls_hp_values-send_ratio )
+                                                        ConditionCurrency      = control_flag( ls_hp_values-send_currency )
+                                                        ConditionQuantity      = control_flag( ls_hp_values-send_quantity )
+                                                        ConditionQuantityUnit  = control_flag( ls_hp_values-send_quantity ) )
                     ) TO ls_headerpricing-%target.
     ENDLOOP.
 
@@ -189,12 +207,28 @@ CLASS zcl_zsde002_dmr_create IMPLEMENTATION.
 
         CHECK <lfs_item_pricing>-condition_type IS NOT INITIAL.
 
-        APPEND VALUE #( %cid                  = next_cid( `IP` )
-                        ConditionType         = <lfs_item_pricing>-condition_type
-                        ConditionRateAmount   = to_internal_amount( <lfs_item_pricing>-condition_amount )
-                        ConditionCurrency     = <lfs_item_pricing>-condition_currency
-                        ConditionQuantity     = to_internal_quantity( <lfs_item_pricing>-condition_pricing_unit )
-                        ConditionQuantityUnit = <lfs_item_pricing>-condition_unit_of_measure
+        DATA(ls_ip_values) = to_condition_values( iv_condition_type = <lfs_item_pricing>-condition_type
+                                                  iv_amount         = <lfs_item_pricing>-condition_amount
+                                                  iv_currency       = <lfs_item_pricing>-condition_currency
+                                                  iv_pricing_unit   = <lfs_item_pricing>-condition_pricing_unit
+                                                  iv_unit           = <lfs_item_pricing>-condition_unit_of_measure
+                                                  it_calc_type      = is_param-t_condition_calc_type ).
+
+        APPEND VALUE #( %cid                   = next_cid( `IP` )
+                        ConditionType          = <lfs_item_pricing>-condition_type
+                        ConditionRateAmount    = ls_ip_values-rate_amount
+                        ConditionRateRatio     = ls_ip_values-rate_ratio
+                        ConditionRateRatioUnit = ls_ip_values-ratio_unit
+                        ConditionCurrency      = ls_ip_values-currency
+                        ConditionQuantity      = ls_ip_values-quantity
+                        ConditionQuantityUnit  = ls_ip_values-quantity_unit
+                        %control               = VALUE #( ConditionType          = if_abap_behv=>mk-on
+                                                          ConditionRateAmount    = control_flag( ls_ip_values-send_amount )
+                                                          ConditionRateRatio     = control_flag( ls_ip_values-send_ratio )
+                                                          ConditionRateRatioUnit = control_flag( ls_ip_values-send_ratio )
+                                                          ConditionCurrency      = control_flag( ls_ip_values-send_currency )
+                                                          ConditionQuantity      = control_flag( ls_ip_values-send_quantity )
+                                                          ConditionQuantityUnit  = control_flag( ls_ip_values-send_quantity ) )
                       ) TO ls_itempricing-%target.
       ENDLOOP.
 
@@ -270,12 +304,7 @@ CLASS zcl_zsde002_dmr_create IMPLEMENTATION.
           WITH lt_partner
 
         CREATE BY \_PricingElement
-          FIELDS ( ConditionType
-                   ConditionRateAmount
-                   ConditionCurrency
-                   ConditionQuantity
-                   ConditionQuantityUnit )
-          WITH lt_headerpricing
+          FROM lt_headerpricing
 
         CREATE BY \_Text
           FIELDS ( LanguageForEdit
@@ -295,12 +324,7 @@ CLASS zcl_zsde002_dmr_create IMPLEMENTATION.
 
       ENTITY DebitMemoRequestItem
         CREATE BY \_ItemPricingElement
-          FIELDS ( ConditionType
-                   ConditionRateAmount
-                   ConditionCurrency
-                   ConditionQuantity
-                   ConditionQuantityUnit )
-          WITH lt_itempricing
+          FROM lt_itempricing
 
         CREATE BY \_ItemText
           FIELDS ( LanguageForEdit
@@ -367,5 +391,4 @@ CLASS zcl_zsde002_dmr_create IMPLEMENTATION.
     ENDIF.
 
   ENDMETHOD.
-
 ENDCLASS.

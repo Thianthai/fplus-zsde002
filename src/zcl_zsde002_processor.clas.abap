@@ -61,6 +61,7 @@ CLASS zcl_zsde002_processor DEFINITION
 
       BEGIN OF ty_param,
         t_process_type          TYPE zif_zsde002_master_data=>tt_process_type,
+        t_condition_calc_type   TYPE zif_zsde002_master_data=>tt_condition_calc_type,
         r_process_type_stockvan TYPE RANGE OF ty_order-process_type,
         r_process_type_sfid     TYPE RANGE OF ty_order-process_type,
         r_process_type_edi      TYPE RANGE OF ty_order-process_type,
@@ -241,7 +242,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_processor IMPLEMENTATION.
+CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
+
 
  METHOD constructor.
 
@@ -942,7 +944,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
 
     ENDLOOP.
 
-    " 15 SELECT ต่อ 1 request — 11 ตัวเดิม + category 1 + duplicate check อีก 3 view
+    " 16 SELECT ต่อ 1 request
     " กลุ่ม unknown คืนค่าที่ไม่มีอยู่จริงในระบบ
     gs_unknown-sales_area          = go_master_data->find_unknown_sales_area( lt_sales_area ).
     gs_unknown-cust_sales_area     = go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ).
@@ -959,6 +961,7 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     " กลุ่ม used คืนค่าที่มีอยู่แล้วในระบบ
     gs_used-cust_ref               = go_master_data->read_used_customer_ref( lt_customer_reference ).
     gt_doc_category                = go_master_data->read_sales_doc_category( lt_sales_document_type ).
+    gs_param-t_condition_calc_type = go_master_data->read_condition_calc_type( lt_condition_type ).
 
   ENDMETHOD.
 
@@ -1133,6 +1136,17 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
                         sf_header_id_ref = is_order-sf_header_id_ref
                         field            = zcl_zsde002_json=>to_json_name( 'condition_type' )
                       ) TO rt_error.
+
+      " มีใน I_ConditionType แต่ไม่มีใน I_PricingConditionType (application V)
+      " = ไม่ใช่ SD pricing condition ส่งไปสร้างเอกสารไม่ได้ และเราไม่รู้ว่าจะส่ง field ชุดไหน
+      ELSEIF NOT line_exists( gs_param-t_condition_calc_type[ condition_type = lv_condition_type ] ).
+        APPEND VALUE #( msgno            = '256'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '256'
+                                                         iv_v1    = |{ <lfs_pricing>-condition_type }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'condition_type' )
+                      ) TO rt_error.
       ENDIF.
     ENDLOOP.
 
@@ -1234,6 +1248,16 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
         APPEND VALUE #( msgno            = '254'
                         msgty            = 'E'
                         msgtx            = message_text( iv_msgno = '254'
+                                                         iv_v1    = |{ <lfs_pricing>-condition_type }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        sf_item_id_ref   = is_item-sf_item_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'condition_type' )
+                      ) TO rt_error.
+
+      ELSEIF NOT line_exists( gs_param-t_condition_calc_type[ condition_type = lv_condition_type ] ).
+        APPEND VALUE #( msgno            = '256'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '256'
                                                          iv_v1    = |{ <lfs_pricing>-condition_type }| )
                         sf_header_id_ref = is_order-sf_header_id_ref
                         sf_item_id_ref   = is_item-sf_item_id_ref
@@ -1617,5 +1641,4 @@ CLASS zcl_zsde002_processor IMPLEMENTATION.
     INTO rv_result.
 
   ENDMETHOD.
-
 ENDCLASS.

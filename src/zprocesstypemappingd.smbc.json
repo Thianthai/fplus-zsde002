@@ -13,7 +13,7 @@
     "name": "Process Type Mapping Data",
     "transportObject": "ZPROCESSTYPEMAPPINGDT",
     "configurationGroup": "",
-    "skipRootEntity": "skipWithoutCalculation"
+    "skipRootEntity": true
   },
   "appConfiguration": {
     "listReport": {},

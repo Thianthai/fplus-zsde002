@@ -130,7 +130,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_http IMPLEMENTATION.
+CLASS ZCL_ZSDE002_HTTP IMPLEMENTATION.
+
 
   METHOD if_http_service_extension~handle_request.
 
@@ -264,5 +265,4 @@ CLASS zcl_zsde002_http IMPLEMENTATION.
     ENDDO.
 
   ENDMETHOD.
-
 ENDCLASS.

@@ -18,6 +18,7 @@ CLASS ltd_master_data IMPLEMENTATION.
   METHOD zif_zsde002_master_data~read_process_type.             ENDMETHOD.
   METHOD zif_zsde002_master_data~read_used_customer_ref.        ENDMETHOD.
   METHOD zif_zsde002_master_data~read_sales_doc_category.       ENDMETHOD.
+  METHOD zif_zsde002_master_data~read_condition_calc_type.      ENDMETHOD.
   METHOD zif_zsde002_master_data~find_unknown_sales_area.       ENDMETHOD.
   METHOD zif_zsde002_master_data~find_unknown_cust_sales_area.  ENDMETHOD.
   METHOD zif_zsde002_master_data~find_unknown_sales_doc_type.   ENDMETHOD.
