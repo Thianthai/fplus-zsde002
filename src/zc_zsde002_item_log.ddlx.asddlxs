@@ -40,6 +40,12 @@ annotate entity ZC_ZSDE002_ITEM_LOG
   Item;
 
   @UI: {
+    lineItem:   [{ position: 15, importance: #HIGH }],
+    fieldGroup: [{ qualifier: 'ItemData', position: 15 }]
+  }
+  SalesOrderItem;
+  
+  @UI: {
     lineItem:   [{ position: 20, importance: #HIGH }],
     fieldGroup: [{ qualifier: 'ItemData', position: 20 }]
   }

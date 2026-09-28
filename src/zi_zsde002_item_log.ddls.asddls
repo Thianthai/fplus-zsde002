@@ -18,6 +18,8 @@ define view entity ZI_ZSDE002_ITEM_LOG
 
       @EndUserText.label: 'Item'
       item                  as Item,
+      @EndUserText.label: 'Sales Order Item'
+      sales_order_item      as SalesOrderItem,
       @EndUserText.label: 'Material Number'
       material_number       as MaterialNumber,
       @EndUserText.label: 'Customer Material'

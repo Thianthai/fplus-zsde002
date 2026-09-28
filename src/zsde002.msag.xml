@@ -203,6 +203,12 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>258</MSGNR>
+     <TEXT>Tax classification update failed for item &amp;1: &amp;2</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>300</MSGNR>
      <TEXT>Field &amp;1: date &amp;2 is not a valid date format</TEXT>
     </T100>

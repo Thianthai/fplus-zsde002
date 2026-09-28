@@ -33,6 +33,7 @@ CLASS ZCL_ZSDE002_RET_CREATE IMPLEMENTATION.
     DATA ls_item          TYPE STRUCTURE FOR CREATE i_customerreturntp\_Item.
     DATA ls_itempricing   TYPE STRUCTURE FOR CREATE i_customerreturnitemtp\_ItemPricingElement.
     DATA ls_itemtext      TYPE STRUCTURE FOR CREATE i_customerreturnitemtp\_ItemText.
+    DATA lt_item_cid      TYPE tt_item_cid.
 
     CLEAR gt_cid_counter.
 
@@ -187,6 +188,9 @@ CLASS ZCL_ZSDE002_RET_CREATE IMPLEMENTATION.
     LOOP AT it_item ASSIGNING FIELD-SYMBOL(<lfs_item>).
 
       DATA(lv_item_cid) = next_cid( `IT` ).
+
+      APPEND VALUE #( item_uuid = <lfs_item>-item_uuid
+                      cid       = lv_item_cid ) TO lt_item_cid.
 
       APPEND VALUE #( %cid                       = lv_item_cid
                       Product                    = zcl_zsde002_validator=>to_internal_material( <lfs_item>-material_number )
@@ -389,6 +393,15 @@ CLASS ZCL_ZSDE002_RET_CREATE IMPLEMENTATION.
       add_success( EXPORTING iv_document_number  = rs_result-sales_order_number
                              iv_sf_header_id_ref = is_order-sf_header_id_ref
                    CHANGING  ct_error            = rs_result-errors ).
+
+      " จับคู่ item ใน log กับเลขที่ SAP ออกให้ ผ่าน %cid ที่ใช้ตอนสร้าง
+      " ใช้ทั้งเก็บลง log และใช้ระบุ item ตอน update ทีหลัง
+      LOOP AT lt_item_cid ASSIGNING FIELD-SYMBOL(<lfs_item_cid>).
+        APPEND VALUE #( item_uuid        = <lfs_item_cid>-item_uuid
+                        sales_order_item = VALUE #( ls_mapped-customerreturnitem[ KEY cid COMPONENTS %cid = <lfs_item_cid>-cid ]-CustomerReturnItem
+                                                    OPTIONAL )
+                      ) TO rs_result-items.
+      ENDLOOP.
     ELSE.
       add_summary( EXPORTING iv_msgno            = '501'
                              iv_sf_header_id_ref = is_order-sf_header_id_ref

@@ -16,6 +16,14 @@ CLASS zcl_zsde002_doc_create_base DEFINITION
     TYPES ty_quantity TYPE p LENGTH 13 DECIMALS 3.
     TYPES ty_ratio    TYPE p LENGTH 11 DECIMALS 3.
 
+    " item ใน log กับ %cid ที่ใช้ตอนสร้าง
+    " หลัง commit ใช้ %cid หาเลข item จริงจาก MAPPED
+    TYPES: BEGIN OF ty_item_cid,
+             item_uuid TYPE ztsd_e002_item-item_uuid,
+             cid       TYPE string,
+           END OF ty_item_cid,
+           tt_item_cid TYPE STANDARD TABLE OF ty_item_cid WITH EMPTY KEY.
+
     " ค่าที่จะใส่ใน pricing element row พร้อม flag ว่า field ไหนต้องส่ง — ผู้เรียกเอา flag ไปตั้ง %control
     " เพราะ RAP ปฏิเสธ field ที่ condition type นั้นไม่รับ แม้จะส่งค่าว่าง/ศูนย์ก็ตาม
     " (CONDITIONQUANTITY must not be changed due to configuration of condition type ZDI3)

@@ -194,8 +194,16 @@ CLASS zcl_zsde002_processor DEFINITION
       IMPORTING it_order_pricing TYPE tt_order_pricing
                 it_item          TYPE tt_item
                 it_item_pricing  TYPE tt_item_pricing
+      EXPORTING et_item_result   TYPE zif_zsde002_doc_create=>tt_item_result
       CHANGING  cs_order         TYPE ty_order
                 ct_error         TYPE tt_error.
+
+    "! แก้ field ที่ RAP BO ไม่เปิดให้ส่งตอน create ผ่าน OData API หลังเอกสารสร้างเสร็จ
+    "! แก้ไม่สำเร็จจะไม่ย้อนเอกสาร แต่เติม error ให้ order ได้สถานะ W
+    METHODS update_document
+      IMPORTING is_order TYPE ty_order
+                it_item  TYPE tt_item
+      CHANGING  ct_error TYPE tt_error.
 
     "! ประกอบแถว message ของ order 1 ใบ
     METHODS to_order_out
@@ -266,6 +274,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lt_item           TYPE tt_item.
     DATA lt_item_pricing   TYPE tt_item_pricing.
     DATA lt_item_pricings  TYPE tt_item_pricing.
+    DATA lt_item_result    TYPE zif_zsde002_doc_create=>tt_item_result.
     DATA lt_error          TYPE tt_error.
 
     " 1. Constant Parameter --------------------------------------------
@@ -438,11 +447,28 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
 
       " 6.5 Post -------------------------------------------------------
       IF NOT line_exists( lt_error[ msgty = 'E' ] ).
+
         post( EXPORTING it_order_pricing = lt_order_pricings
                         it_item          = lt_item
                         it_item_pricing  = lt_item_pricings
+              IMPORTING et_item_result   = lt_item_result
               CHANGING  cs_order         = ls_order
                         ct_error         = lt_error ).
+
+        " เลข item ที่ SAP ออกให้ใช้ทั้งเก็บลง log และชี้ item ตอน update
+        LOOP AT lt_item_result ASSIGNING FIELD-SYMBOL(<lfs_item_result>).
+          ASSIGN lt_item[ item_uuid = <lfs_item_result>-item_uuid ] TO FIELD-SYMBOL(<lfs_logged_item>).
+          IF sy-subrc = 0.
+            <lfs_logged_item>-sales_order_item = <lfs_item_result>-sales_order_item.
+          ENDIF.
+        ENDLOOP.
+
+        IF ls_order-sales_order_number IS NOT INITIAL.
+          update_document( EXPORTING is_order = ls_order
+                                     it_item  = lt_item
+                           CHANGING  ct_error = lt_error ).
+        ENDIF.
+
       ENDIF.
 
       " 6.6 Status -----------------------------------------------------
@@ -1340,6 +1366,8 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
 
   METHOD post.
 
+    CLEAR et_item_result.
+
     " เลือก BO ตาม SD document category ของ doc type — validate รับรองแล้วว่าเป็น 1 ใน 4 ตัวนี้
     " category อ่านจาก I_SalesDocumentType ตอน prefetch ไม่ได้มาจาก payload หรือ mapping table
     DATA(lv_category) = VALUE #( gt_doc_category[ sales_document_type = cs_order-sales_order_type ]-sd_document_category
@@ -1374,7 +1402,43 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
 
     cs_order-sales_order_number = ls_result-sales_order_number.
 
+    et_item_result = ls_result-items.
+
     APPEND LINES OF ls_result-errors TO ct_error.
+
+  ENDMETHOD.
+
+
+  METHOD update_document.
+
+    " ส่งเฉพาะ item ที่ payload ระบุ tax class มา
+    " item ที่ไม่ได้ระบุปล่อยให้ระบบ derive จาก customer และ material ตามปกติ
+    DATA(lt_update) = VALUE zcl_zsde002_so_update=>tt_item_update(
+                        FOR ls_item IN it_item
+                        WHERE ( mat_tax_class IS NOT INITIAL AND sales_order_item IS NOT INITIAL )
+                        ( sales_order_item = ls_item-sales_order_item
+                          tax_class        = ls_item-mat_tax_class ) ).
+
+    IF lt_update IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    DATA(lt_failure) = NEW zcl_zsde002_so_update( )->update_tax_class( iv_sales_order = is_order-sales_order_number
+                                                                          it_item        = lt_update ).
+
+    " เอกสารสร้างแล้วจึงไม่ย้อน
+    " ใช้ E เพื่อให้ order ได้สถานะ W และ message ขึ้นใน response
+    " ถ้าใช้ W จะถูกซ่อนเพราะ order ที่มีเลขเอกสารและไม่มี E ตอบแค่ 500 แถวเดียว
+    LOOP AT lt_failure ASSIGNING FIELD-SYMBOL(<lfs_failure>).
+      APPEND VALUE #( msgno            = '258'
+                      msgty            = 'E'
+                      msgtx            = message_text( iv_msgno = '258'
+                                                       iv_v1    = |{ <lfs_failure>-sales_order_item ALPHA = OUT }|
+                                                       iv_v2    = <lfs_failure>-message )
+                      sf_header_id_ref = is_order-sf_header_id_ref
+                      sf_item_id_ref   = VALUE #( it_item[ sales_order_item = <lfs_failure>-sales_order_item ]-sf_item_id_ref OPTIONAL )
+                    ) TO ct_error.
+    ENDLOOP.
 
   ENDMETHOD.
 

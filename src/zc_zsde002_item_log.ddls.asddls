@@ -8,6 +8,7 @@ define view entity ZC_ZSDE002_ITEM_LOG
       OrderUUID,
 
       Item,
+      SalesOrderItem,
       MaterialNumber,
       CustomerMaterial,
       ItemCategory,
