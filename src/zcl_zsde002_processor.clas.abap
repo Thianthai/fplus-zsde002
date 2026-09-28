@@ -1411,9 +1411,11 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
 
   METHOD update_document.
 
+    DATA lo_updater TYPE REF TO zif_zsde002_doc_update.
+
     " ส่งเฉพาะ item ที่ payload ระบุ tax class มา
     " item ที่ไม่ได้ระบุปล่อยให้ระบบ derive จาก customer และ material ตามปกติ
-    DATA(lt_update) = VALUE zcl_zsde002_so_update=>tt_item_update(
+    DATA(lt_update) = VALUE zif_zsde002_doc_update=>tt_item_update(
                         FOR ls_item IN it_item
                         WHERE ( mat_tax_class IS NOT INITIAL AND sales_order_item IS NOT INITIAL )
                         ( sales_order_item = ls_item-sales_order_item
@@ -1423,8 +1425,24 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(lt_failure) = NEW zcl_zsde002_so_update( )->update_tax_class( iv_sales_order = is_order-sales_order_number
-                                                                          it_item        = lt_update ).
+    " แต่ละประเภทเอกสารมี OData API ของตัวเอง
+    " เลือกตาม SD document category แบบเดียวกับตอน create
+    DATA(lv_category) = VALUE #( gt_doc_category[ sales_document_type = is_order-sales_order_type ]-sd_document_category OPTIONAL ).
+
+    CASE lv_category.
+      WHEN gc_category_order.       lo_updater = NEW zcl_zsde002_so_update( ).
+      WHEN gc_category_return.      lo_updater = NEW zcl_zsde002_ret_update( ).
+      WHEN gc_category_credit_memo. lo_updater = NEW zcl_zsde002_cmr_update( ).
+      WHEN gc_category_debit_memo.  lo_updater = NEW zcl_zsde002_dmr_update( ).
+    ENDCASE.
+
+    " ไม่ควรถึงตรงนี้เพราะเอกสารสร้างผ่าน post ได้แล้ว ซึ่งแปลว่า category ตรงกับ 1 ใน 4 ตัว
+    IF lo_updater IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
+    DATA(lt_failure) = lo_updater->update_items( iv_document = is_order-sales_order_number
+                                                 it_item     = lt_update ).
 
     " เอกสารสร้างแล้วจึงไม่ย้อน
     " ใช้ E เพื่อให้ order ได้สถานะ W และ message ขึ้นใน response

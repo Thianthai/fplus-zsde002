@@ -3,9 +3,9 @@
  <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
   <asx:values>
    <VSEOCLASS>
-    <CLSNAME>ZCL_ZSDE002_SO_UPDATE</CLSNAME>
+    <CLSNAME>ZCL_ZSDE002_RET_UPDATE</CLSNAME>
     <LANGU>E</LANGU>
-    <DESCRIPT>Sales Order Creation - Update Sales Order</DESCRIPT>
+    <DESCRIPT>Sales Order Creation - Update Customer Return</DESCRIPT>
     <STATE>1</STATE>
     <CLSCCINCL>X</CLSCCINCL>
     <FIXPT>X</FIXPT>
