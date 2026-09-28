@@ -165,7 +165,7 @@ CLASS zcl_zsde002_so_update IMPLEMENTATION.
     IF lo_client IS BOUND.
       TRY.
           lo_client->close( ).
-        CATCH cx_web_http_client_error.
+        CATCH cx_web_http_client_error ##NO_HANDLER.
           " ปิดไม่ได้ไม่กระทบผลของ item ที่แก้ไปแล้ว
       ENDTRY.
     ENDIF.
