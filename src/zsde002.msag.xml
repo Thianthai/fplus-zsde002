@@ -197,6 +197,12 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>255</MSGNR>
+     <TEXT>Material &amp;1 is not maintained for sales area &amp;2/&amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>256</MSGNR>
      <TEXT>Condition type &amp;1 is not a pricing condition</TEXT>
     </T100>
@@ -204,7 +210,7 @@
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>258</MSGNR>
-     <TEXT>Tax classification update failed for item &amp;1: &amp;2</TEXT>
+     <TEXT>Tax classification update failed for item &amp;1:</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>

@@ -29,6 +29,7 @@ CLASS ltd_master_data IMPLEMENTATION.
   METHOD zif_zsde002_master_data~find_unknown_product_unit.     ENDMETHOD.
   METHOD zif_zsde002_master_data~find_unknown_condition_type.   ENDMETHOD.
   METHOD zif_zsde002_master_data~find_unknown_currency.         ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_mat_sales_area.   ENDMETHOD.
 ENDCLASS.
 
 

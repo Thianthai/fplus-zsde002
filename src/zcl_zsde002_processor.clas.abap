@@ -87,6 +87,7 @@ CLASS zcl_zsde002_processor DEFINITION
         plant               TYPE zif_zsde002_master_data=>tt_plant,
         storage_location    TYPE zif_zsde002_master_data=>tt_storage_location,
         product_unit        TYPE zif_zsde002_master_data=>tt_product_unit,
+        mat_sales_area      TYPE zif_zsde002_master_data=>tt_mat_sales_area,
         condition_type      TYPE zif_zsde002_master_data=>tt_condition_type,
       END OF ty_unknown,
 
@@ -858,6 +859,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lt_plant               TYPE zif_zsde002_master_data=>tt_plant.
     DATA lt_storage_location    TYPE zif_zsde002_master_data=>tt_storage_location.
     DATA lt_product_unit        TYPE zif_zsde002_master_data=>tt_product_unit.
+    DATA lt_mat_sales_area      TYPE zif_zsde002_master_data=>tt_mat_sales_area.
     DATA lt_condition_type      TYPE zif_zsde002_master_data=>tt_condition_type.
     DATA lt_customer_reference  TYPE zif_zsde002_master_data=>tt_customer_reference.
 
@@ -959,6 +961,16 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
                         ) INTO TABLE lt_product_unit.
         ENDIF.
 
+        " material ต้อง extend เข้า sales org + distribution channel ของ order
+        IF  lv_material                      IS NOT INITIAL
+        AND <lfs_order>-sales_organization   IS NOT INITIAL
+        AND <lfs_order>-distribution_channel IS NOT INITIAL.
+          INSERT VALUE #( product              = lv_material
+                          sales_organization   = <lfs_order>-sales_organization
+                          distribution_channel = <lfs_order>-distribution_channel
+                        ) INTO TABLE lt_mat_sales_area.
+        ENDIF.
+
         LOOP AT <lfs_item>-pricings ASSIGNING FIELD-SYMBOL(<lfs_item_pricing>).
           IF <lfs_item_pricing>-condition_type IS NOT INITIAL.
             lv_condition_type = <lfs_item_pricing>-condition_type.
@@ -981,8 +993,8 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     gs_unknown-plant               = go_master_data->find_unknown_plant( lt_plant ).
     gs_unknown-storage_location    = go_master_data->find_unknown_storage_location( lt_storage_location ).
     gs_unknown-product_unit        = go_master_data->find_unknown_product_unit( lt_product_unit ).
+    gs_unknown-mat_sales_area      = go_master_data->find_unknown_mat_sales_area( lt_mat_sales_area ).
     gs_unknown-condition_type      = go_master_data->find_unknown_condition_type( lt_condition_type ).
-    gs_unknown-sales_document_type = go_master_data->find_unknown_sales_doc_type( lt_sales_document_type ).
 
     " กลุ่ม used คืนค่าที่มีอยู่แล้วในระบบ
     gs_used-cust_ref               = go_master_data->read_used_customer_ref( lt_customer_reference ).
@@ -1264,6 +1276,30 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
+    " Material + Sales Area
+    " material ต้อง extend เข้า sales org + distribution channel ของ order ก่อนจึงขายได้
+    " ข้ามถ้า material หรือ sales area หาไม่เจอ จะได้ไม่ขึ้น error ซ้อนกัน
+    IF  lv_material IS NOT INITIAL
+    AND NOT line_exists( gs_unknown-sales_area[ sales_organization   = is_order-sales_organization
+                                                distribution_channel = is_order-distribution_channel
+                                                division             = is_order-division ] ).
+
+      IF line_exists( gs_unknown-mat_sales_area[ product              = lv_material
+                                                 sales_organization   = is_order-sales_organization
+                                                 distribution_channel = is_order-distribution_channel ] ).
+        APPEND VALUE #( msgno            = '255'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '255'
+                                                         iv_v1    = |{ is_item-material_number }|
+                                                         iv_v2    = |{ is_order-sales_organization }|
+                                                         iv_v3    = |{ is_order-distribution_channel }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        sf_item_id_ref   = is_item-sf_item_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'material_number' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
     " Item Condition Type
     LOOP AT it_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
       CHECK <lfs_pricing>-condition_type IS NOT INITIAL.
@@ -1447,12 +1483,13 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     " เอกสารสร้างแล้วจึงไม่ย้อน
     " ใช้ E เพื่อให้ order ได้สถานะ W และ message ขึ้นใน response
     " ถ้าใช้ W จะถูกซ่อนเพราะ order ที่มีเลขเอกสารและไม่มี E ตอบแค่ 500 แถวเดียว
+    " เหตุผลจาก OData มักยาวเกิน 50 ตัวอักษรที่ message variable รับได้
+    " จึงต่อท้ายข้อความของ 258 เองแทนการส่งเป็น &2
     LOOP AT lt_failure ASSIGNING FIELD-SYMBOL(<lfs_failure>).
       APPEND VALUE #( msgno            = '258'
                       msgty            = 'E'
-                      msgtx            = message_text( iv_msgno = '258'
-                                                       iv_v1    = |{ <lfs_failure>-sales_order_item ALPHA = OUT }|
-                                                       iv_v2    = <lfs_failure>-message )
+                      msgtx            = |{ message_text( iv_msgno = '258'
+                                                          iv_v1    = |{ <lfs_failure>-sales_order_item ALPHA = OUT }| ) } | && <lfs_failure>-message
                       sf_header_id_ref = is_order-sf_header_id_ref
                       sf_item_id_ref   = VALUE #( it_item[ sales_order_item = <lfs_failure>-sales_order_item ]-sf_item_id_ref OPTIONAL )
                     ) TO ct_error.

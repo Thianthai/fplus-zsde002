@@ -63,7 +63,15 @@ INTERFACE zif_zsde002_master_data
     BEGIN OF ty_condition_calc_type,
       condition_type   TYPE ty_condition_type,
       calculation_type TYPE ty_calculation_type,
-    END OF ty_condition_calc_type.
+    END OF ty_condition_calc_type,
+
+    "! material ที่ extend เข้า sales org + distribution channel แล้ว
+    "! ไม่มี division เพราะ material ผูกกับ sales area แค่ 2 ระดับนี้
+    BEGIN OF ty_mat_sales_area,
+      product              TYPE I_ProductSalesDelivery-Product,
+      sales_organization   TYPE I_ProductSalesDelivery-ProductSalesOrg,
+      distribution_channel TYPE I_ProductSalesDelivery-ProductDistributionChnl,
+    END OF ty_mat_sales_area.
 
   TYPES:
     tt_process_type        TYPE SORTED TABLE OF ty_process_type
@@ -93,7 +101,10 @@ INTERFACE zif_zsde002_master_data
     tt_sales_doc_category  TYPE SORTED TABLE OF ty_sales_doc_category
                            WITH UNIQUE KEY sales_document_type,
     tt_condition_calc_type TYPE SORTED TABLE OF ty_condition_calc_type
-                           WITH UNIQUE KEY condition_type.
+                           WITH UNIQUE KEY condition_type,
+    "! รายการ material + sales area ของทั้ง request
+    tt_mat_sales_area      TYPE SORTED TABLE OF ty_mat_sales_area
+                           WITH UNIQUE KEY product sales_organization distribution_channel.
 
   "! อ่าน process type mapping ทั้งใบ — ต่างจาก find_unknown_* ตรงที่คืนทุกแถว
   "! ไม่ใช่เฉพาะที่หาไม่เจอ เพราะ validation ต้องเทียบค่าใน row ไม่ใช่แค่เช็คว่ามีอยู่
@@ -128,6 +139,13 @@ INTERFACE zif_zsde002_master_data
   METHODS find_unknown_cust_sales_area
     IMPORTING it_key           TYPE tt_cust_sales_area
     RETURNING VALUE(rt_result) TYPE tt_cust_sales_area.
+
+  "! คืน material + sales area ที่ material ยังไม่ได้ extend เข้าไป
+  "! @parameter it_key    | material + sales org + distribution channel ที่ต้องการเช็ค
+  "! @parameter rt_result | คู่ที่หาไม่เจอ
+  METHODS find_unknown_mat_sales_area
+    IMPORTING it_key           TYPE tt_mat_sales_area
+    RETURNING VALUE(rt_result) TYPE tt_mat_sales_area.
 
   METHODS find_unknown_sales_doc_type
     IMPORTING it_key           TYPE tt_sales_document_type

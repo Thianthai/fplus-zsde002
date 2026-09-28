@@ -241,6 +241,57 @@ CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD zif_zsde002_master_data~find_unknown_mat_sales_area.
+
+    DATA lr_product              TYPE RANGE OF zif_zsde002_master_data=>ty_mat_sales_area-product.
+    DATA lr_sales_organization   TYPE RANGE OF zif_zsde002_master_data=>ty_mat_sales_area-sales_organization.
+    DATA lr_distribution_channel TYPE RANGE OF zif_zsde002_master_data=>ty_mat_sales_area-distribution_channel.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
+
+      IF NOT line_exists( lr_product[ low = <lfs_key>-product ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-product )
+                     TO lr_product.
+      ENDIF.
+
+      IF NOT line_exists( lr_sales_organization[ low = <lfs_key>-sales_organization ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-sales_organization )
+                     TO lr_sales_organization.
+      ENDIF.
+
+      IF NOT line_exists( lr_distribution_channel[ low = <lfs_key>-distribution_channel ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-distribution_channel )
+                     TO lr_distribution_channel.
+      ENDIF.
+
+    ENDLOOP.
+
+    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่าน master data
+    " view นี้อ่านเพื่อเช็คว่ามีอยู่จริงเท่านั้น ไม่ได้ส่งข้อมูลกลับไปให้ผู้เรียก
+    SELECT FROM I_ProductSalesDelivery WITH PRIVILEGED ACCESS
+      FIELDS Product,
+             ProductSalesOrg,
+             ProductDistributionChnl
+      WHERE Product                 IN @lr_product
+        AND ProductSalesOrg         IN @lr_sales_organization
+        AND ProductDistributionChnl IN @lr_distribution_channel
+      INTO TABLE @DATA(lt_existing).
+
+    LOOP AT it_key ASSIGNING <lfs_key>.
+      IF NOT line_exists( lt_existing[ Product                 = <lfs_key>-product
+                                       ProductSalesOrg         = <lfs_key>-sales_organization
+                                       ProductDistributionChnl = <lfs_key>-distribution_channel ] ).
+        INSERT <lfs_key> INTO TABLE rt_result.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
   METHOD zif_zsde002_master_data~find_unknown_sales_doc_type.
 
     DATA lr_sales_document_type TYPE RANGE OF zif_zsde002_master_data=>ty_sales_document_type.
