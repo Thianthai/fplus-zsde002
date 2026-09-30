@@ -99,7 +99,7 @@
       <HTTP_COMPRESS_REQUEST>0</HTTP_COMPRESS_REQUEST>
       <OBS_TYPE>REST</OBS_TYPE>
       <OBS_TYPE_TEXT>HTTP Service</OBS_TYPE_TEXT>
-      <TEXT>Customer Return Update</TEXT>
+      <TEXT>Customer Return Update V4</TEXT>
      </item>
     </OUTBOUND>
     <PUBLISH_STATUS>p</PUBLISH_STATUS>
