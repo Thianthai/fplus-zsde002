@@ -23,6 +23,12 @@ INTERFACE zif_zsde002_doc_update
     "! item ที่แก้ไม่สำเร็จของเอกสาร 1 ใบ
     tt_item_failure TYPE STANDARD TABLE OF ty_item_failure WITH EMPTY KEY.
 
+  TYPES:
+    "! ค่าระดับ header ที่ต้องแก้หลังสร้างเอกสาร
+    BEGIN OF ty_header_update,
+      shipping_condition TYPE ztsd_e002_order-shipping_conditions,
+    END OF ty_header_update.
+
   "! แก้ item ของเอกสารทีละตัว
   "! @parameter iv_document | เลขเอกสารที่เพิ่งสร้าง
   "! @parameter it_item     | item ที่ต้องแก้
@@ -31,5 +37,14 @@ INTERFACE zif_zsde002_doc_update
     IMPORTING iv_document       TYPE ztsd_e002_order-sales_order_number
               it_item           TYPE tt_item_update
     RETURNING VALUE(rt_failure) TYPE tt_item_failure.
+
+  "! แก้ค่าระดับ header ของเอกสาร
+  "! @parameter iv_document | เลขเอกสารที่เพิ่งสร้าง
+  "! @parameter is_header   | ค่าที่ต้องแก้
+  "! @parameter rv_message  | เหตุผลที่แก้ไม่สำเร็จ ถ้าว่างแปลว่าสำเร็จหรือไม่มีอะไรต้องแก้
+  METHODS update_header
+    IMPORTING iv_document       TYPE ztsd_e002_order-sales_order_number
+              is_header         TYPE ty_header_update
+    RETURNING VALUE(rv_message) TYPE string.
 
 ENDINTERFACE.

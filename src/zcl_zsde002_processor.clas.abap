@@ -1447,23 +1447,12 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
 
   METHOD update_document.
 
-    DATA lo_updater TYPE REF TO zif_zsde002_doc_update.
-
-    " ส่งเฉพาะ item ที่ payload ระบุ tax class มา
-    " item ที่ไม่ได้ระบุปล่อยให้ระบบ derive จาก customer และ material ตามปกติ
-    DATA(lt_update) = VALUE zif_zsde002_doc_update=>tt_item_update(
-                        FOR ls_item IN it_item
-                        WHERE ( mat_tax_class IS NOT INITIAL AND sales_order_item IS NOT INITIAL )
-                        ( sales_order_item = ls_item-sales_order_item
-                          tax_class        = ls_item-mat_tax_class ) ).
-
-    IF lt_update IS INITIAL.
-      RETURN.
-    ENDIF.
-
     " แต่ละประเภทเอกสารมี OData API ของตัวเอง
     " เลือกตาม SD document category แบบเดียวกับตอน create
-    DATA(lv_category) = VALUE #( gt_doc_category[ sales_document_type = is_order-sales_order_type ]-sd_document_category OPTIONAL ).
+    DATA(lv_category) = VALUE #( gt_doc_category[ sales_document_type = is_order-sales_order_type ]-sd_document_category
+                                 OPTIONAL ).
+
+    DATA lo_updater TYPE REF TO zif_zsde002_doc_update.
 
     CASE lv_category.
       WHEN gc_category_order.       lo_updater = NEW zcl_zsde002_so_update( ).
@@ -1477,8 +1466,19 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA(lt_failure) = lo_updater->update_items( iv_document = is_order-sales_order_number
-                                                 it_item     = lt_update ).
+    " Item -------------------------------------------------------------
+    " ส่งเฉพาะ item ที่ payload ระบุ tax class มา
+    " item ที่ไม่ได้ระบุปล่อยให้ระบบ derive จาก customer และ material ตามปกติ
+    DATA(lt_update) = VALUE zif_zsde002_doc_update=>tt_item_update(
+                        FOR ls_item IN it_item
+                        WHERE ( mat_tax_class IS NOT INITIAL AND sales_order_item IS NOT INITIAL )
+                        ( sales_order_item = ls_item-sales_order_item
+                          tax_class        = ls_item-mat_tax_class ) ).
+
+    IF lt_update IS NOT INITIAL.
+      DATA(lt_failure) = lo_updater->update_items( iv_document = is_order-sales_order_number
+                                                   it_item     = lt_update ).
+    ENDIF.
 
     " เอกสารสร้างแล้วจึงไม่ย้อน
     " ใช้ E เพื่อให้ order ได้สถานะ W และ message ขึ้นใน response
@@ -1489,11 +1489,27 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       APPEND VALUE #( msgno            = '258'
                       msgty            = 'E'
                       msgtx            = |{ message_text( iv_msgno = '258'
-                                                          iv_v1    = |{ <lfs_failure>-sales_order_item ALPHA = OUT }| ) } | && <lfs_failure>-message
+                                                          iv_v1    = |{ <lfs_failure>-sales_order_item ALPHA = OUT }| ) } |
+                                      && <lfs_failure>-message
                       sf_header_id_ref = is_order-sf_header_id_ref
                       sf_item_id_ref   = VALUE #( it_item[ sales_order_item = <lfs_failure>-sales_order_item ]-sf_item_id_ref OPTIONAL )
                     ) TO ct_error.
     ENDLOOP.
+
+    " Header -----------------------------------------------------------
+    " ประเภทเอกสารที่ไม่มีค่าระดับ header ให้แก้จะคืนค่าว่างโดยไม่เรียก API
+    " sales order ส่ง shipping condition ไปตั้งแต่ตอน create แล้ว
+    DATA(lv_message) = lo_updater->update_header( iv_document = is_order-sales_order_number
+                                                  is_header   = VALUE #( shipping_condition = is_order-shipping_conditions ) ).
+
+    IF lv_message IS NOT INITIAL.
+      APPEND VALUE #( msgno            = '259'
+                      msgty            = 'E'
+                      msgtx            = |{ message_text( iv_msgno = '259' ) } { lv_message }|
+                      sf_header_id_ref = is_order-sf_header_id_ref
+                      field            = zcl_zsde002_json=>to_json_name( 'shipping_conditions' )
+                    ) TO ct_error.
+    ENDIF.
 
   ENDMETHOD.
 
