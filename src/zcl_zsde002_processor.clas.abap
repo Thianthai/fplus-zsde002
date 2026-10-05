@@ -116,13 +116,6 @@ CLASS zcl_zsde002_processor DEFINITION
 
   PRIVATE SECTION.
 
-    " ProcessingDate / ProcessingTime มีไว้ให้คนไล่ปัญหา ต้องตรงกับเวลาบนนาฬิกาคนอ่าน
-    " fix ไว้ในโค้ดเพราะระบบนี้ใช้ในไทยที่เดียว และ user time zone ฝั่ง ABAP เชื่อไม่ได้ —
-    " ค่าใน Fiori Settings เป็น frontend personalization ที่ UI ใช้แปลงตอน render เท่านั้น
-    " cl_abap_context_info=>get_user_time_zone( ) คืน UTC แม้ user จะตั้ง Asia/Bangkok ไว้แล้ว
-    " ใช้ UTC+7 เพราะเป็น ID เดียวที่มีอยู่จริงบน tenant นี้ — THA / BANGKOK / INDCH
-    " ทำให้ CONVERT TIME STAMP คืน sy-subrc 8 แบบเงียบๆ แล้วได้วันที่เป็นศูนย์
-    CONSTANTS gc_time_zone            TYPE timezone VALUE 'UTC+7'.
     CONSTANTS gc_category_order       TYPE zif_zsde002_master_data=>ty_sd_document_category VALUE 'C'.
     CONSTANTS gc_category_return      TYPE zif_zsde002_master_data=>ty_sd_document_category VALUE 'H'.
     CONSTANTS gc_category_credit_memo TYPE zif_zsde002_master_data=>ty_sd_document_category VALUE 'K'.
@@ -316,8 +309,11 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
 
     " 4. Request ID ----------------------------------------------------
     IF ls_request-request_id IS INITIAL.
-      ls_request-request_id = |{ cl_abap_context_info=>get_system_date( ) }_| &&
-                              |{ cl_abap_context_info=>get_system_time( ) }|.
+      " SBPA ไม่ส่งมา -> สร้างจากวันที่และเวลา local ให้ตรงกับ ProcessingDate / ProcessingTime
+      zcl_utility=>get_local_datetime( IMPORTING ev_date = DATA(lv_request_date)
+                                                 ev_time = DATA(lv_request_time) ).
+
+      ls_request-request_id = |{ lv_request_date }_{ lv_request_time }|.
     ENDIF.
 
     " ยาวเกินความกว้างของ column จะถูกตัดตอน INSERT — เตือนให้ SBPA รู้ว่าค่าที่เก็บไม่ครบ
@@ -1516,10 +1512,11 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
 
   METHOD to_order_out.
 
-    CONVERT TIME STAMP is_order-created_at
-            TIME ZONE  gc_time_zone
-            INTO DATE  DATA(lv_date)
-                 TIME  DATA(lv_time).
+    " created_at เก็บเป็น UTC
+    " แปลงเป็นวันที่และเวลา local เพื่อให้คนอ่านไล่ปัญหาได้ตรงกับเวลาของตัวเอง
+    zcl_utility=>get_local_datetime( EXPORTING iv_timestamp = is_order-created_at
+                                     IMPORTING ev_date      = DATA(lv_date)
+                                               ev_time      = DATA(lv_time) ).
 
     DATA(lv_date_out) = |{ lv_date+6(2) }-{ lv_date+4(2) }-{ lv_date(4) }|.
     DATA(lv_time_out) = |{ lv_time(2) }:{ lv_time+2(2) }:{ lv_time+4(2) }|.

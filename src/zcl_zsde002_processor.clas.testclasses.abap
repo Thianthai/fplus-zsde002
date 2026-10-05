@@ -210,8 +210,20 @@ CLASS ltcl_order_out DEFINITION FINAL FOR TESTING
 
   PRIVATE SECTION.
 
+    CLASS-DATA:
+      "! SQL test double ของ ZTBC_PARAM
+      "! ว่างไว้เสมอ เพื่อให้ zcl_utility=>get_local_datetime ใช้ UTC+7 ไม่ขึ้นกับ param บน tenant
+      go_environment TYPE REF TO if_osql_test_environment.
+
     DATA go_cut TYPE REF TO zcl_zsde002_processor.
 
+    "! สร้าง test double ของ ZTBC_PARAM ครั้งเดียวต่อ class
+    CLASS-METHODS class_setup.
+
+    "! ทำลาย test double
+    CLASS-METHODS class_teardown.
+
+    "! ล้าง test double แล้วสร้าง object ที่ทดสอบ
     METHODS setup.
 
     METHODS success_is_one_row          FOR TESTING.
@@ -230,7 +242,16 @@ ENDCLASS.
 
 CLASS ltcl_order_out IMPLEMENTATION.
 
+  METHOD class_setup.
+    go_environment = cl_osql_test_environment=>create( i_dependency_list = VALUE #( ( 'ZTBC_PARAM' ) ) ).
+  ENDMETHOD.
+
+  METHOD class_teardown.
+    go_environment->destroy( ).
+  ENDMETHOD.
+
   METHOD setup.
+    go_environment->clear_doubles( ).
     go_cut = NEW zcl_zsde002_processor( io_master_data = NEW ltd_master_data( ) ).
   ENDMETHOD.
 
@@ -333,8 +354,9 @@ CLASS ltcl_order_out IMPLEMENTATION.
     DATA(lt_out) = go_cut->to_order_out( is_order = ls_order
                                          it_error = VALUE #( ) ).
 
-    " 00:00:00 = gc_time_zone ไม่มีอยู่จริง CONVERT TIME STAMP ล้มเงียบด้วย sy-subrc 8
-    " 07:22:57 = gc_time_zone กลับไปเป็น UTC หรือกลับไปอ่านจาก user context
+    " 00:00:00 = แปลงไม่สำเร็จ zcl_utility=>get_local_datetime คืนเวลาว่าง
+    " 07:22:57 = ไม่ได้แปลงเลย ส่ง UTC ออกไปตรง ๆ
+    " ค่าอื่นที่ไม่ใช่ 14:22:57 = ไม่ได้ใช้ UTC+7 ให้เช็คว่า test double ของ ZTBC_PARAM ยังว่างอยู่
     cl_abap_unit_assert=>assert_equals(
       act = lt_out[ 1 ]-processing_time
       exp = `14:22:57`
