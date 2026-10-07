@@ -206,6 +206,9 @@ CLASS ZCL_ZSDE002_SO_CREATE IMPLEMENTATION.
                       Batch                  = COND #( WHEN is_order-process_type IN is_param-r_process_type_batch
                                                        THEN <lfs_item>-batch )
                       Route                  = <lfs_item>-route
+                      " custom field FOC ของ sales document item
+                      " ค่าต้องอยู่ใน code list ของ field ถ้าไม่อยู่ RAP จะปฏิเสธเอง
+                      yy1_foc_pa_sdi         = <lfs_item>-promotion_id_text
                     ) TO ls_item-%target.
 
       " Item Pricing ---------------------------------------------------
@@ -260,12 +263,6 @@ CLASS ZCL_ZSDE002_SO_CREATE IMPLEMENTATION.
                       LanguageForEdit   = gc_langu
                       LongTextIDForEdit = 'ZT06'
                       LongText          = <lfs_item>-unit_text
-                    ) TO ls_itemtext-%target.
-
-      APPEND VALUE #( %cid              = next_cid( `IX` )
-                      LanguageForEdit   = gc_langu
-                      LongTextIDForEdit = 'ZT07'
-                      LongText          = <lfs_item>-promotion_id_text
                     ) TO ls_itemtext-%target.
 
       APPEND VALUE #( %cid              = next_cid( `IX` )
@@ -333,7 +330,8 @@ CLASS ZCL_ZSDE002_SO_CREATE IMPLEMENTATION.
                    Plant
                    StorageLocation
                    Batch
-                   Route )
+                   Route
+                   yy1_foc_pa_sdi )
           WITH lt_item
 
       ENTITY SalesOrderItem
