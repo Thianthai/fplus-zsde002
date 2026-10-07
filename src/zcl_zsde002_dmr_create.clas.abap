@@ -373,6 +373,10 @@ CLASS ZCL_ZSDE002_DMR_CREATE IMPLEMENTATION.
                       CHANGING  ct_error            = rs_result-errors ).
 
     IF ls_commit_failed IS NOT INITIAL.
+      " save ล้มแล้วข้อมูลยังค้างอยู่ใน transactional buffer ของ RAP
+      " ถ้าไม่ล้างทิ้ง COMMIT WORK ตอนบันทึก log จะพยายาม save เอกสารนี้ซ้ำ
+      " แล้ว RAP จะ dump ด้วย CX_ABAP_BEHV_COMMIT_FAILED ทำให้ log หายไปด้วย
+      ROLLBACK ENTITIES.
       add_summary( EXPORTING iv_msgno            = '502'
                              iv_sf_header_id_ref = is_order-sf_header_id_ref
                    CHANGING  ct_error            = rs_result-errors ).
