@@ -132,6 +132,36 @@ CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD zif_zsde002_master_data~read_internal_unit.
+
+    DATA lr_unit TYPE RANGE OF zif_zsde002_master_data=>ty_unit_external.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    lr_unit = VALUE #( FOR <lfs_for> IN it_key
+                     ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+
+    " รหัสภายนอกขึ้นกับภาษา UnitOfMeasure_E ใช้ภาษาของ session ที่อ่าน
+    " comm user ที่ SBPA ใช้ตั้งเป็นภาษาอังกฤษเสมอ จึงได้รหัสชุดเดียวกับที่ SBPA ส่งมา
+    " PRIVILEGED ACCESS ให้เหมือน master data ตัวอื่น เพราะ comm user ไม่มี role อ่าน master data
+    SELECT FROM I_UnitOfMeasure WITH PRIVILEGED ACCESS
+      FIELDS UnitOfMeasure_E,
+             UnitOfMeasure
+      WHERE UnitOfMeasure_E IN @lr_unit
+      INTO TABLE @DATA(lt_found).
+
+    " ถ้ารหัสภายนอกเดียวกันชี้ไปหลายรหัสภายใน ใช้ตัวแรกที่เจอ
+    " INSERT ตัวที่ซ้ำจะได้ sy-subrc 4 และถูกข้ามไปเอง
+    LOOP AT lt_found ASSIGNING FIELD-SYMBOL(<lfs_found>).
+      INSERT VALUE #( external_unit = <lfs_found>-UnitOfMeasure_E
+                      internal_unit = <lfs_found>-UnitOfMeasure ) INTO TABLE rt_result.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
   METHOD zif_zsde002_master_data~find_unknown_sales_area.
 
     DATA lr_sales_organization   TYPE RANGE OF zif_zsde002_master_data=>ty_sales_area-sales_organization.

@@ -10,7 +10,12 @@ INTERFACE zif_zsde002_master_data
     ty_currency             TYPE I_Currency-Currency,
     ty_customer_reference   TYPE I_SalesOrder-PurchaseOrderByCustomer,
     ty_sd_document_category TYPE I_SalesDocumentType-SDDocumentCategory,
-    ty_calculation_type     TYPE I_PricingConditionType-ConditionCalculationType.
+    ty_calculation_type     TYPE I_PricingConditionType-ConditionCalculationType,
+    "! รหัสหน่วยภายนอก ตามที่ user และ SBPA ใช้ เช่น PC และ CAR
+    ty_unit_external        TYPE I_UnitOfMeasure-UnitOfMeasure_E,
+    "! รหัสหน่วยภายนอกทั้ง request
+    tt_unit_external        TYPE SORTED TABLE OF ty_unit_external
+                            WITH UNIQUE KEY table_line.
 
   TYPES:
     "! Process type mapping — เฉพาะ field ที่ validation ใช้
@@ -71,7 +76,17 @@ INTERFACE zif_zsde002_master_data
       product              TYPE I_ProductSalesDelivery-Product,
       sales_organization   TYPE I_ProductSalesDelivery-ProductSalesOrg,
       distribution_channel TYPE I_ProductSalesDelivery-ProductDistributionChnl,
-    END OF ty_mat_sales_area.
+    END OF ty_mat_sales_area,
+
+    "! คู่รหัสหน่วย ภายนอก -> ภายใน เช่น PC -> ST และ CAR -> KAR
+    BEGIN OF ty_unit_map,
+      external_unit TYPE ty_unit_external,
+      internal_unit TYPE I_UnitOfMeasure-UnitOfMeasure,
+    END OF ty_unit_map,
+
+    "! คู่รหัสหน่วยทั้ง request
+    tt_unit_map TYPE SORTED TABLE OF ty_unit_map
+                WITH UNIQUE KEY external_unit.
 
   TYPES:
     tt_process_type        TYPE SORTED TABLE OF ty_process_type
@@ -131,6 +146,13 @@ INTERFACE zif_zsde002_master_data
   METHODS read_condition_calc_type
     IMPORTING it_key           TYPE tt_condition_type
     RETURNING VALUE(rt_result) TYPE tt_condition_calc_type.
+
+  "! แปลงรหัสหน่วยภายนอกเป็นรหัสภายในจาก master data หน่วยวัดของระบบ
+  "! @parameter it_key    | รหัสภายนอกที่ต้องการแปลง
+  "! @parameter rt_result | คู่ที่หาเจอ รหัสที่หาไม่เจอจะไม่อยู่ในผลลัพธ์
+  METHODS read_internal_unit
+    IMPORTING it_key           TYPE tt_unit_external
+    RETURNING VALUE(rt_result) TYPE tt_unit_map.
 
   METHODS find_unknown_sales_area
     IMPORTING it_key           TYPE tt_sales_area

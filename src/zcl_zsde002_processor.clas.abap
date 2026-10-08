@@ -127,6 +127,8 @@ CLASS zcl_zsde002_processor DEFINITION
     DATA gs_unknown       TYPE ty_unknown.
     DATA gs_used          TYPE ty_used.
     DATA gt_doc_category  TYPE zif_zsde002_master_data=>tt_sales_doc_category.
+    "! คู่รหัสหน่วย ภายนอก -> ภายใน ของทั้ง request
+    DATA gt_unit_map      TYPE zif_zsde002_master_data=>tt_unit_map.
 
     METHODS get_constant_param
       IMPORTING io_param  TYPE REF TO zcl_param
@@ -159,6 +161,15 @@ CLASS zcl_zsde002_processor DEFINITION
     "! รวบ key ของทั้ง request แล้วถาม master data ครั้งเดียวต่อประเภท
     METHODS prefetch_master_data
       IMPORTING it_order TYPE zcl_zsde002_http=>tt_order_in.
+
+    "! แปลงรหัสหน่วยภายนอกเป็นรหัสภายในด้วยคู่ที่อ่านไว้ตอน prefetch
+    "! ไม่เจอในคู่ = คืนค่าเดิม
+    "! รหัสภายในที่ส่งมาตรง ๆ จึงยังผ่าน และรหัสที่ไม่มีจริงจะไปติด message 253
+    "! @parameter iv_value  | รหัสหน่วยจาก payload
+    "! @parameter rv_result | รหัสหน่วยภายใน
+    METHODS to_internal_unit
+      IMPORTING iv_value         TYPE clike
+      RETURNING VALUE(rv_result) TYPE I_ProductUnitsOfMeasure-AlternativeUnit.
 
     METHODS check_order_master_data
       IMPORTING is_order        TYPE ty_order
@@ -668,7 +679,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       <lfs_pricing>-order_uuid = cs_order-order_uuid.
 
       " Condition Unit Of Measure
-      <lfs_pricing>-condition_unit_of_measure = zcl_zsde002_validator=>to_internal_unit( <lfs_pricing>-condition_unit_of_measure ).
+      <lfs_pricing>-condition_unit_of_measure = to_internal_unit( <lfs_pricing>-condition_unit_of_measure ).
 
       " Administrative Data
       <lfs_pricing>-created_by            = cs_order-created_by.
@@ -702,7 +713,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     cs_item-order_uuid = is_order-order_uuid.
 
     " Sales Unit
-    cs_item-sales_unit = zcl_zsde002_validator=>to_internal_unit( cs_item-sales_unit ).
+    cs_item-sales_unit = to_internal_unit( cs_item-sales_unit ).
 
     " Administrative Data
     cs_item-created_by            = is_order-created_by.
@@ -732,7 +743,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       <lfs_pricing>-order_uuid = cs_item-order_uuid.
 
       " Condition Unit Of Measure
-      <lfs_pricing>-condition_unit_of_measure = zcl_zsde002_validator=>to_internal_unit( <lfs_pricing>-condition_unit_of_measure ).
+      <lfs_pricing>-condition_unit_of_measure = to_internal_unit( <lfs_pricing>-condition_unit_of_measure ).
 
       " Administrative Data
       <lfs_pricing>-created_by            = cs_item-created_by.
@@ -858,6 +869,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lt_mat_sales_area      TYPE zif_zsde002_master_data=>tt_mat_sales_area.
     DATA lt_condition_type      TYPE zif_zsde002_master_data=>tt_condition_type.
     DATA lt_customer_reference  TYPE zif_zsde002_master_data=>tt_customer_reference.
+    DATA lt_unit                TYPE zif_zsde002_master_data=>tt_unit_external.
 
     DATA lv_sales_doc_type      TYPE zif_zsde002_master_data=>ty_sales_document_type.
     DATA lv_payment_terms       TYPE zif_zsde002_master_data=>ty_payment_terms.
@@ -866,10 +878,42 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lv_condition_type      TYPE zif_zsde002_master_data=>ty_condition_type.
     DATA lv_material            TYPE zif_zsde002_master_data=>ty_product.
     DATA lv_customer_reference  TYPE zif_zsde002_master_data=>ty_customer_reference.
+    DATA lv_unit                TYPE zif_zsde002_master_data=>ty_unit_external.
 
     CLEAR gs_unknown.
     CLEAR gs_used.
     CLEAR gt_doc_category.
+    CLEAR gt_unit_map.
+
+    " Unit
+    " ต้องรู้รหัสภายในก่อน loop หลัก เพราะ key ของ product unit ข้างล่างใช้รหัสภายใน
+    " รวบทั้ง sales unit และ unit ของ condition ทั้งระดับ order และ item
+    LOOP AT it_order ASSIGNING FIELD-SYMBOL(<lfs_unit_order>).
+
+      LOOP AT <lfs_unit_order>-pricings ASSIGNING FIELD-SYMBOL(<lfs_unit_order_pricing>)
+        WHERE condition_unit_of_measure IS NOT INITIAL.
+        lv_unit = <lfs_unit_order_pricing>-condition_unit_of_measure.
+        INSERT lv_unit INTO TABLE lt_unit.
+      ENDLOOP.
+
+      LOOP AT <lfs_unit_order>-items ASSIGNING FIELD-SYMBOL(<lfs_unit_item>).
+
+        IF <lfs_unit_item>-sales_unit IS NOT INITIAL.
+          lv_unit = <lfs_unit_item>-sales_unit.
+          INSERT lv_unit INTO TABLE lt_unit.
+        ENDIF.
+
+        LOOP AT <lfs_unit_item>-pricings ASSIGNING FIELD-SYMBOL(<lfs_unit_item_pricing>)
+          WHERE condition_unit_of_measure IS NOT INITIAL.
+          lv_unit = <lfs_unit_item_pricing>-condition_unit_of_measure.
+          INSERT lv_unit INTO TABLE lt_unit.
+        ENDLOOP.
+
+      ENDLOOP.
+
+    ENDLOOP.
+
+    gt_unit_map = go_master_data->read_internal_unit( lt_unit ).
 
     LOOP AT it_order ASSIGNING FIELD-SYMBOL(<lfs_order>).
 
@@ -953,7 +997,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
         IF  lv_material           IS NOT INITIAL
         AND <lfs_item>-sales_unit IS NOT INITIAL.
           INSERT VALUE #( product          = lv_material
-                          alternative_unit = zcl_zsde002_validator=>to_internal_unit( <lfs_item>-sales_unit )
+                          alternative_unit = to_internal_unit( <lfs_item>-sales_unit )
                         ) INTO TABLE lt_product_unit.
         ENDIF.
 
@@ -996,6 +1040,17 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     gs_used-cust_ref               = go_master_data->read_used_customer_ref( lt_customer_reference ).
     gt_doc_category                = go_master_data->read_sales_doc_category( lt_sales_document_type ).
     gs_param-t_condition_calc_type = go_master_data->read_condition_calc_type( lt_condition_type ).
+
+  ENDMETHOD.
+
+
+  METHOD to_internal_unit.
+
+    DATA lv_external TYPE zif_zsde002_master_data=>ty_unit_external.
+
+    lv_external = iv_value.
+
+    rv_result = VALUE #( gt_unit_map[ external_unit = lv_external ]-internal_unit DEFAULT iv_value ).
 
   ENDMETHOD.
 
