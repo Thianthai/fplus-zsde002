@@ -150,12 +150,18 @@ CLASS ZCL_ZSDE002_VALIDATOR IMPLEMENTATION.
   METHOD to_internal_sales_doc_type.
 
     " sales document type มาตรฐานของ SAP มีรหัสภายนอกที่แสดงในหน้าจอต่างจากรหัสภายในที่เก็บ
-    " (conversion routine AUART) — SBPA ส่งรหัสภายนอกมาเพราะเห็นแบบนั้นในหน้าจอ
-    " ABAP Cloud ไม่มี conversion exit ให้เรียก จึง hardcode คู่ที่พบไว้ก่อน
-    " custom type (Z*, CC*, CB*) รหัสเดียวกันทั้งสองชั้น ผ่านไปตรงๆ
-    " ถ้าจะเพิ่มคู่ใหม่ ให้ยืนยันจาก BCMO ก่อน: กรอกรหัสภายนอกแล้วดูว่า DB เก็บอะไร
+    " ใช้ conversion routine AUART แปลงระหว่าง 2 รหัส
+    " SBPA ส่งรหัสภายนอกมาเพราะเห็นแบบนั้นในหน้าจอ
+    " ABAP Cloud ไม่มี conversion exit ให้เรียก
+    " และ I_SalesDocumentType กับ I_SalesDocumentTypeText ไม่มีคอลัมน์รหัสภายนอก จึง hardcode คู่ที่ใช้จริงไว้
+    " CR -> G2 คือ credit memo request
+    " DR -> L2 คือ debit memo request
+    " custom type (Z*, CC*, CB*) รหัสเดียวกันทั้งสองชั้น ผ่านไปตรง ๆ
+    " mapping table ZTSD_PRCS_TY ก็เก็บรหัสภายใน เพราะแอป maintain แปลงให้ตอนบันทึก
+    " ถ้าจะเพิ่มคู่ใหม่ ให้สร้างเอกสารด้วยมือแล้วดูว่า I_SalesDocument เก็บ SalesDocumentType เป็นอะไร
     rv_result = SWITCH #( iv_value
                           WHEN 'CR' THEN 'G2'
+                          WHEN 'DR' THEN 'L2'
                           ELSE iv_value ).
 
   ENDMETHOD.
