@@ -11,6 +11,9 @@ INTERFACE zif_zsde002_master_data
     ty_customer_reference   TYPE I_SalesOrder-PurchaseOrderByCustomer,
     ty_sd_document_category TYPE I_SalesDocumentType-SDDocumentCategory,
     ty_calculation_type     TYPE I_PricingConditionType-ConditionCalculationType,
+    ty_shipping_condition   TYPE I_ShippingCondition-ShippingCondition,
+    ty_route                TYPE I_Route-Route,
+    ty_item_category        TYPE I_SalesDocumentItemCategory-SalesDocumentItemCategory,
     "! รหัสหน่วยภายนอก ตามที่ user และ SBPA ใช้ เช่น PC และ CAR
     ty_unit_external        TYPE I_UnitOfMeasure-UnitOfMeasure_E,
     "! รหัสหน่วยภายนอกทั้ง request
@@ -108,6 +111,12 @@ INTERFACE zif_zsde002_master_data
     tt_sales_document_type TYPE SORTED TABLE OF ty_sales_document_type
                            WITH UNIQUE KEY table_line,
     tt_payment_terms       TYPE SORTED TABLE OF ty_payment_terms
+                           WITH UNIQUE KEY table_line,
+    tt_shipping_condition  TYPE SORTED TABLE OF ty_shipping_condition
+                           WITH UNIQUE KEY table_line,
+    tt_route               TYPE SORTED TABLE OF ty_route
+                           WITH UNIQUE KEY table_line,
+    tt_item_category       TYPE SORTED TABLE OF ty_item_category
                            WITH UNIQUE KEY table_line,
     tt_product             TYPE SORTED TABLE OF ty_product
                            WITH UNIQUE KEY table_line,
@@ -211,6 +220,27 @@ INTERFACE zif_zsde002_master_data
     IMPORTING it_key           TYPE tt_payment_terms
     RETURNING VALUE(rt_result) TYPE tt_payment_terms.
 
+  "! คืน shipping condition ที่ไม่มีอยู่จริง
+  "! @parameter it_key    | shipping condition ที่ต้องการเช็ค
+  "! @parameter rt_result | ตัวที่หาไม่เจอ
+  METHODS find_unknown_shipping_cond
+    IMPORTING it_key           TYPE tt_shipping_condition
+    RETURNING VALUE(rt_result) TYPE tt_shipping_condition.
+
+  "! คืน route ที่ไม่มีอยู่จริง
+  "! @parameter it_key    | route ที่ต้องการเช็ค
+  "! @parameter rt_result | ตัวที่หาไม่เจอ
+  METHODS find_unknown_route
+    IMPORTING it_key           TYPE tt_route
+    RETURNING VALUE(rt_result) TYPE tt_route.
+
+  "! คืน item category ที่ไม่มีอยู่จริง
+  "! เช็คแค่ว่ามีอยู่ ไม่ได้เช็คว่าใช้กับ doc type ของ order ได้หรือไม่
+  "! @parameter it_key    | item category ที่ต้องการเช็ค
+  "! @parameter rt_result | ตัวที่หาไม่เจอ
+  METHODS find_unknown_item_category
+    IMPORTING it_key           TYPE tt_item_category
+    RETURNING VALUE(rt_result) TYPE tt_item_category.
   METHODS find_unknown_product
     IMPORTING it_key           TYPE tt_product
     RETURNING VALUE(rt_result) TYPE tt_product.

@@ -82,6 +82,7 @@ CLASS zcl_zsde002_processor DEFINITION
         cust_sales_area     TYPE zif_zsde002_master_data=>tt_cust_sales_area,
         sales_document_type TYPE zif_zsde002_master_data=>tt_sales_document_type,
         payment_terms       TYPE zif_zsde002_master_data=>tt_payment_terms,
+        shipping_condition  TYPE zif_zsde002_master_data=>tt_shipping_condition,
         currency            TYPE zif_zsde002_master_data=>tt_currency,
         product             TYPE zif_zsde002_master_data=>tt_product,
         plant               TYPE zif_zsde002_master_data=>tt_plant,
@@ -90,6 +91,8 @@ CLASS zcl_zsde002_processor DEFINITION
         mat_sales_area      TYPE zif_zsde002_master_data=>tt_mat_sales_area,
         mat_plant           TYPE zif_zsde002_master_data=>tt_mat_plant,
         batch               TYPE zif_zsde002_master_data=>tt_batch,
+        route               TYPE zif_zsde002_master_data=>tt_route,
+        item_category       TYPE zif_zsde002_master_data=>tt_item_category,
         condition_type      TYPE zif_zsde002_master_data=>tt_condition_type,
       END OF ty_unknown,
 
@@ -871,12 +874,18 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lt_mat_sales_area      TYPE zif_zsde002_master_data=>tt_mat_sales_area.
     DATA lt_mat_plant           TYPE zif_zsde002_master_data=>tt_mat_plant.
     DATA lt_batch               TYPE zif_zsde002_master_data=>tt_batch.
+    DATA lt_shipping_condition  TYPE zif_zsde002_master_data=>tt_shipping_condition.
+    DATA lt_route               TYPE zif_zsde002_master_data=>tt_route.
+    DATA lt_item_category       TYPE zif_zsde002_master_data=>tt_item_category.
     DATA lt_condition_type      TYPE zif_zsde002_master_data=>tt_condition_type.
     DATA lt_customer_reference  TYPE zif_zsde002_master_data=>tt_customer_reference.
     DATA lt_unit                TYPE zif_zsde002_master_data=>tt_unit_external.
 
     DATA lv_sales_doc_type      TYPE zif_zsde002_master_data=>ty_sales_document_type.
     DATA lv_payment_terms       TYPE zif_zsde002_master_data=>ty_payment_terms.
+    DATA lv_shipping_condition  TYPE zif_zsde002_master_data=>ty_shipping_condition.
+    DATA lv_route               TYPE zif_zsde002_master_data=>ty_route.
+    DATA lv_item_category       TYPE zif_zsde002_master_data=>ty_item_category.
     DATA lv_currency            TYPE zif_zsde002_master_data=>ty_currency.
     DATA lv_plant               TYPE zif_zsde002_master_data=>ty_plant.
     DATA lv_condition_type      TYPE zif_zsde002_master_data=>ty_condition_type.
@@ -967,6 +976,13 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
         INSERT lv_payment_terms INTO TABLE lt_payment_terms.
       ENDIF.
 
+      " Shipping Condition
+      " เก็บทุก order ส่วนการเลือกว่า doc type ไหนต้องเช็ค อยู่ที่ check_order_master_data
+      IF <lfs_order>-shipping_conditions IS NOT INITIAL.
+        lv_shipping_condition = <lfs_order>-shipping_conditions.
+        INSERT lv_shipping_condition INTO TABLE lt_shipping_condition.
+      ENDIF.
+
       " Currency
       IF <lfs_order>-currency IS NOT INITIAL.
         lv_currency = <lfs_order>-currency.
@@ -1047,6 +1063,18 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
                         ) INTO TABLE lt_batch.
         ENDIF.
 
+        " Route
+        IF <lfs_item>-route IS NOT INITIAL.
+          lv_route = <lfs_item>-route.
+          INSERT lv_route INTO TABLE lt_route.
+        ENDIF.
+
+        " Item Category
+        IF <lfs_item>-item_category IS NOT INITIAL.
+          lv_item_category = <lfs_item>-item_category.
+          INSERT lv_item_category INTO TABLE lt_item_category.
+        ENDIF.
+
         LOOP AT <lfs_item>-pricings ASSIGNING FIELD-SYMBOL(<lfs_item_pricing>).
 
           IF <lfs_item_pricing>-condition_type IS NOT INITIAL.
@@ -1073,12 +1101,13 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
 
     ENDLOOP.
 
-    " 20 SELECT ต่อ 1 request
+    " 23 SELECT ต่อ 1 request
     " กลุ่ม unknown คืนค่าที่ไม่มีอยู่จริงในระบบ
     gs_unknown-sales_area          = go_master_data->find_unknown_sales_area( lt_sales_area ).
     gs_unknown-cust_sales_area     = go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ).
     gs_unknown-sales_document_type = go_master_data->find_unknown_sales_doc_type( lt_sales_document_type ).
     gs_unknown-payment_terms       = go_master_data->find_unknown_payment_terms( lt_payment_terms ).
+    gs_unknown-shipping_condition  = go_master_data->find_unknown_shipping_cond( lt_shipping_condition ).
     gs_unknown-currency            = go_master_data->find_unknown_currency( lt_currency ).
     gs_unknown-product             = go_master_data->find_unknown_product( lt_product ).
     gs_unknown-plant               = go_master_data->find_unknown_plant( lt_plant ).
@@ -1087,6 +1116,8 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     gs_unknown-mat_sales_area      = go_master_data->find_unknown_mat_sales_area( lt_mat_sales_area ).
     gs_unknown-mat_plant           = go_master_data->find_unknown_mat_plant( lt_mat_plant ).
     gs_unknown-batch               = go_master_data->find_unknown_batch( lt_batch ).
+    gs_unknown-route               = go_master_data->find_unknown_route( lt_route ).
+    gs_unknown-item_category       = go_master_data->find_unknown_item_category( lt_item_category ).
     gs_unknown-condition_type      = go_master_data->find_unknown_condition_type( lt_condition_type ).
 
     " กลุ่ม used คืนค่าที่มีอยู่แล้วในระบบ
@@ -1118,12 +1149,14 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
              msgno    TYPE symsgno,
            END OF ty_partner.
 
-    DATA lt_partner        TYPE STANDARD TABLE OF ty_partner WITH EMPTY KEY.
-    DATA lv_sales_doc_type TYPE zif_zsde002_master_data=>ty_sales_document_type.
-    DATA lv_payment_terms  TYPE zif_zsde002_master_data=>ty_payment_terms.
-    DATA lv_currency       TYPE zif_zsde002_master_data=>ty_currency.
-    DATA lv_condition_type TYPE zif_zsde002_master_data=>ty_condition_type.
-    DATA lv_calc_type      TYPE zif_zsde002_master_data=>ty_calculation_type.
+    DATA lt_partner            TYPE STANDARD TABLE OF ty_partner WITH EMPTY KEY.
+    DATA lv_sales_doc_type     TYPE zif_zsde002_master_data=>ty_sales_document_type.
+    DATA lv_payment_terms      TYPE zif_zsde002_master_data=>ty_payment_terms.
+    DATA lv_currency           TYPE zif_zsde002_master_data=>ty_currency.
+    DATA lv_condition_type     TYPE zif_zsde002_master_data=>ty_condition_type.
+    DATA lv_calc_type          TYPE zif_zsde002_master_data=>ty_calculation_type.
+    DATA lv_shipping_condition TYPE zif_zsde002_master_data=>ty_shipping_condition.
+    DATA lv_doc_category       TYPE zif_zsde002_master_data=>ty_sd_document_category.
 
     IF  is_order-sales_organization   IS NOT INITIAL
     AND is_order-distribution_channel IS NOT INITIAL
@@ -1250,6 +1283,28 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
+    " Shipping Condition
+    " เช็คเฉพาะ SO และ return เพราะสองประเภทนี้ส่งค่าให้ระบบจริง
+    " CMR และ DMR ไม่ได้ใช้ค่านี้ จึงไม่ให้ค่าที่ไม่ได้ใช้ทำให้ order ล้ม
+    " lv_sales_doc_type ถูกเติมไว้แล้วในบล็อก Sales Document Type ข้างบน
+    IF is_order-shipping_conditions IS NOT INITIAL.
+
+      lv_shipping_condition = is_order-shipping_conditions.
+      lv_doc_category       = VALUE #( gt_doc_category[ sales_document_type = lv_sales_doc_type ]-sd_document_category
+                                       OPTIONAL ).
+
+      IF  ( lv_doc_category = gc_category_order OR lv_doc_category = gc_category_return )
+      AND line_exists( gs_unknown-shipping_condition[ table_line = lv_shipping_condition ] ).
+        APPEND VALUE #( msgno            = '212'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '212'
+                                                         iv_v1    = |{ is_order-shipping_conditions }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'shipping_conditions' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
     " Currency
     IF is_order-currency IS NOT INITIAL.
       lv_currency = is_order-currency.
@@ -1327,6 +1382,8 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lv_condition_type TYPE zif_zsde002_master_data=>ty_condition_type.
     DATA lv_calc_type      TYPE zif_zsde002_master_data=>ty_calculation_type.
     DATA lv_currency       TYPE zif_zsde002_master_data=>ty_currency.
+    DATA lv_route          TYPE zif_zsde002_master_data=>ty_route.
+    DATA lv_item_category  TYPE zif_zsde002_master_data=>ty_item_category.
 
     " Product
     " ส่ง MaterialNumber มา → เช็คกับ I_Product
@@ -1468,6 +1525,40 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
                         sf_header_id_ref = is_order-sf_header_id_ref
                         sf_item_id_ref   = is_item-sf_item_id_ref
                         field            = zcl_zsde002_json=>to_json_name( 'batch' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
+    " Route
+    IF is_item-route IS NOT INITIAL.
+      lv_route = is_item-route.
+
+      IF line_exists( gs_unknown-route[ table_line = lv_route ] ).
+        APPEND VALUE #( msgno            = '262'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '262'
+                                                         iv_v1    = |{ is_item-route }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        sf_item_id_ref   = is_item-sf_item_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'route' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
+    " Item Category
+    " เช็คแค่ว่ามีอยู่จริง
+    " item category ที่มีจริงแต่ใช้กับ doc type ของ order ไม่ได้ จะยังได้ข้อความห่อจาก RAP
+    IF is_item-item_category IS NOT INITIAL.
+      lv_item_category = is_item-item_category.
+
+      IF line_exists( gs_unknown-item_category[ table_line = lv_item_category ] ).
+        APPEND VALUE #( msgno            = '263'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '263'
+                                                         iv_v1    = |{ is_item-item_category }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        sf_item_id_ref   = is_item-sf_item_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'item_category' )
                       ) TO rt_error.
       ENDIF.
     ENDIF.

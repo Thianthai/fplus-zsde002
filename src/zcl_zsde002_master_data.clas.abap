@@ -468,6 +468,81 @@ CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD zif_zsde002_master_data~find_unknown_shipping_cond.
+
+    DATA lr_shipping_condition TYPE RANGE OF zif_zsde002_master_data=>ty_shipping_condition.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    lr_shipping_condition = VALUE #( FOR <lfs_for> IN it_key
+                                   ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+
+    SELECT FROM I_ShippingCondition
+      FIELDS ShippingCondition
+      WHERE ShippingCondition IN @lr_shipping_condition
+      INTO TABLE @DATA(lt_existing).
+
+    LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
+      IF NOT line_exists( lt_existing[ ShippingCondition = <lfs_key> ] ).
+        INSERT <lfs_key> INTO TABLE rt_result.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD zif_zsde002_master_data~find_unknown_route.
+
+    DATA lr_route TYPE RANGE OF zif_zsde002_master_data=>ty_route.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    lr_route = VALUE #( FOR <lfs_for> IN it_key
+                      ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+
+    SELECT FROM I_Route
+      FIELDS Route
+      WHERE Route IN @lr_route
+      INTO TABLE @DATA(lt_existing).
+
+    LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
+      IF NOT line_exists( lt_existing[ Route = <lfs_key> ] ).
+        INSERT <lfs_key> INTO TABLE rt_result.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD zif_zsde002_master_data~find_unknown_item_category.
+
+    DATA lr_item_category TYPE RANGE OF zif_zsde002_master_data=>ty_item_category.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    lr_item_category = VALUE #( FOR <lfs_for> IN it_key
+                              ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
+
+    SELECT FROM I_SalesDocumentItemCategory
+      FIELDS SalesDocumentItemCategory
+      WHERE SalesDocumentItemCategory IN @lr_item_category
+      INTO TABLE @DATA(lt_existing).
+
+    LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
+      IF NOT line_exists( lt_existing[ SalesDocumentItemCategory = <lfs_key> ] ).
+        INSERT <lfs_key> INTO TABLE rt_result.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
   METHOD zif_zsde002_master_data~find_unknown_product.
 
     DATA lr_product TYPE RANGE OF zif_zsde002_master_data=>ty_product.

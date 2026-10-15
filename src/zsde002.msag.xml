@@ -167,6 +167,12 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>212</MSGNR>
+     <TEXT>Shipping condition &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>250</MSGNR>
      <TEXT>Material &amp;1 does not exist</TEXT>
     </T100>
@@ -235,6 +241,18 @@
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>261</MSGNR>
      <TEXT>Condition unit &amp;2 is not valid for material &amp;1</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>262</MSGNR>
+     <TEXT>Route &amp;1 does not exist</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>263</MSGNR>
+     <TEXT>Item category &amp;1 does not exist</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>

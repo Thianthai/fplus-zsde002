@@ -33,6 +33,9 @@ CLASS ltd_master_data IMPLEMENTATION.
   METHOD zif_zsde002_master_data~find_unknown_mat_plant.        ENDMETHOD.
   METHOD zif_zsde002_master_data~find_unknown_batch.            ENDMETHOD.
   METHOD zif_zsde002_master_data~read_internal_unit.            ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_shipping_cond.    ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_route.            ENDMETHOD.
+  METHOD zif_zsde002_master_data~find_unknown_item_category.    ENDMETHOD.
 ENDCLASS.
 
 
