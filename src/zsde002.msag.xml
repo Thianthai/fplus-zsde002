@@ -209,6 +209,12 @@
     <T100>
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>257</MSGNR>
+     <TEXT>Material &amp;1 is not maintained for plant &amp;2</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
      <MSGNR>258</MSGNR>
      <TEXT>Tax classification update failed for item &amp;1:</TEXT>
     </T100>
@@ -217,6 +223,18 @@
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>259</MSGNR>
      <TEXT>Shipping condition update failed:</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>260</MSGNR>
+     <TEXT>Batch &amp;1 of material &amp;2 does not exist in plant &amp;3</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>261</MSGNR>
+     <TEXT>Condition unit &amp;2 is not valid for material &amp;1</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>

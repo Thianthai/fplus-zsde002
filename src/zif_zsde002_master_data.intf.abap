@@ -78,6 +78,20 @@ INTERFACE zif_zsde002_master_data
       distribution_channel TYPE I_ProductSalesDelivery-ProductDistributionChnl,
     END OF ty_mat_sales_area,
 
+    "! material ที่ extend ไป plant แล้ว
+    BEGIN OF ty_mat_plant,
+      product TYPE I_ProductPlantBasic-Product,
+      plant   TYPE I_ProductPlantBasic-Plant,
+    END OF ty_mat_plant,
+
+    "! batch ที่มีข้อมูลระดับ plant
+    "! batch ที่กำหนดระดับ material ก็ยังต้องมีแถวของ plant ก่อน SD จึงจะใช้ได้
+    BEGIN OF ty_batch,
+      product TYPE I_Batch-Material,
+      plant   TYPE I_Batch-Plant,
+      batch   TYPE I_Batch-Batch,
+    END OF ty_batch,
+
     "! คู่รหัสหน่วย ภายนอก -> ภายใน เช่น PC -> ST และ CAR -> KAR
     BEGIN OF ty_unit_map,
       external_unit TYPE ty_unit_external,
@@ -119,7 +133,13 @@ INTERFACE zif_zsde002_master_data
                            WITH UNIQUE KEY condition_type,
     "! รายการ material + sales area ของทั้ง request
     tt_mat_sales_area      TYPE SORTED TABLE OF ty_mat_sales_area
-                           WITH UNIQUE KEY product sales_organization distribution_channel.
+                           WITH UNIQUE KEY product sales_organization distribution_channel,
+    "! รายการ material + plant ของทั้ง request
+    tt_mat_plant           TYPE SORTED TABLE OF ty_mat_plant
+                           WITH UNIQUE KEY product plant,
+    "! รายการ batch ของทั้ง request
+    tt_batch               TYPE SORTED TABLE OF ty_batch
+                           WITH UNIQUE KEY product plant batch.
 
   "! อ่าน process type mapping ทั้งใบ — ต่างจาก find_unknown_* ตรงที่คืนทุกแถว
   "! ไม่ใช่เฉพาะที่หาไม่เจอ เพราะ validation ต้องเทียบค่าใน row ไม่ใช่แค่เช็คว่ามีอยู่
@@ -168,6 +188,20 @@ INTERFACE zif_zsde002_master_data
   METHODS find_unknown_mat_sales_area
     IMPORTING it_key           TYPE tt_mat_sales_area
     RETURNING VALUE(rt_result) TYPE tt_mat_sales_area.
+
+  "! คืน material + plant ที่ material ยังไม่ได้ extend ไป
+  "! @parameter it_key    | material + plant ที่ต้องการเช็ค
+  "! @parameter rt_result | คู่ที่หาไม่เจอ
+  METHODS find_unknown_mat_plant
+    IMPORTING it_key           TYPE tt_mat_plant
+    RETURNING VALUE(rt_result) TYPE tt_mat_plant.
+
+  "! คืน batch ที่ไม่มีข้อมูลใน plant หรือถูก mark deletion แล้ว
+  "! @parameter it_key    | material + plant + batch ที่ต้องการเช็ค
+  "! @parameter rt_result | ชุดที่หาไม่เจอหรือใช้ไม่ได้
+  METHODS find_unknown_batch
+    IMPORTING it_key           TYPE tt_batch
+    RETURNING VALUE(rt_result) TYPE tt_batch.
 
   METHODS find_unknown_sales_doc_type
     IMPORTING it_key           TYPE tt_sales_document_type

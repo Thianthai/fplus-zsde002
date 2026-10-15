@@ -322,6 +322,102 @@ CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD zif_zsde002_master_data~find_unknown_mat_plant.
+
+    DATA lr_product TYPE RANGE OF zif_zsde002_master_data=>ty_mat_plant-product.
+    DATA lr_plant   TYPE RANGE OF zif_zsde002_master_data=>ty_mat_plant-plant.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
+
+      IF NOT line_exists( lr_product[ low = <lfs_key>-product ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-product )
+                     TO lr_product.
+      ENDIF.
+
+      IF NOT line_exists( lr_plant[ low = <lfs_key>-plant ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-plant )
+                     TO lr_plant.
+      ENDIF.
+
+    ENDLOOP.
+
+    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่าน master data
+    " view นี้อ่านเพื่อเช็คว่ามีอยู่จริงเท่านั้น ไม่ได้ส่งข้อมูลกลับไปให้ผู้เรียก
+    SELECT FROM I_ProductPlantBasic WITH PRIVILEGED ACCESS
+      FIELDS Product,
+             Plant
+      WHERE Product IN @lr_product
+        AND Plant   IN @lr_plant
+      INTO TABLE @DATA(lt_existing).
+
+    LOOP AT it_key ASSIGNING <lfs_key>.
+      IF NOT line_exists( lt_existing[ Product = <lfs_key>-product
+                                       Plant   = <lfs_key>-plant ] ).
+        INSERT <lfs_key> INTO TABLE rt_result.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD zif_zsde002_master_data~find_unknown_batch.
+
+    DATA lr_product TYPE RANGE OF zif_zsde002_master_data=>ty_batch-product.
+    DATA lr_plant   TYPE RANGE OF zif_zsde002_master_data=>ty_batch-plant.
+    DATA lr_batch   TYPE RANGE OF zif_zsde002_master_data=>ty_batch-batch.
+
+    IF it_key IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    LOOP AT it_key ASSIGNING FIELD-SYMBOL(<lfs_key>).
+
+      IF NOT line_exists( lr_product[ low = <lfs_key>-product ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-product )
+                     TO lr_product.
+      ENDIF.
+
+      IF NOT line_exists( lr_plant[ low = <lfs_key>-plant ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-plant )
+                     TO lr_plant.
+      ENDIF.
+
+      IF NOT line_exists( lr_batch[ low = <lfs_key>-batch ] ).
+        APPEND VALUE #( sign = 'I' option = 'EQ' low = <lfs_key>-batch )
+                     TO lr_batch.
+      ENDIF.
+
+    ENDLOOP.
+
+    " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่าน master data
+    " batch ที่กำหนดระดับ material มีแถวที่ plant ว่างอยู่ด้วย
+    " แถวนั้นไม่ถูกดึงมา เพราะ key ที่ส่งมามี plant เสมอ
+    " batch ที่ถูก mark deletion นับว่าใช้ไม่ได้ จึงไม่ดึงมา
+    SELECT FROM I_Batch WITH PRIVILEGED ACCESS
+      FIELDS Material,
+             Plant,
+             Batch
+      WHERE Material                 IN @lr_product
+        AND Plant                    IN @lr_plant
+        AND Batch                    IN @lr_batch
+        AND BatchIsMarkedForDeletion =  @abap_false
+      INTO TABLE @DATA(lt_existing).
+
+    LOOP AT it_key ASSIGNING <lfs_key>.
+      IF NOT line_exists( lt_existing[ Material = <lfs_key>-product
+                                       Plant    = <lfs_key>-plant
+                                       Batch    = <lfs_key>-batch ] ).
+        INSERT <lfs_key> INTO TABLE rt_result.
+      ENDIF.
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
   METHOD zif_zsde002_master_data~find_unknown_sales_doc_type.
 
     DATA lr_sales_document_type TYPE RANGE OF zif_zsde002_master_data=>ty_sales_document_type.

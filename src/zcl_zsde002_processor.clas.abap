@@ -88,6 +88,8 @@ CLASS zcl_zsde002_processor DEFINITION
         storage_location    TYPE zif_zsde002_master_data=>tt_storage_location,
         product_unit        TYPE zif_zsde002_master_data=>tt_product_unit,
         mat_sales_area      TYPE zif_zsde002_master_data=>tt_mat_sales_area,
+        mat_plant           TYPE zif_zsde002_master_data=>tt_mat_plant,
+        batch               TYPE zif_zsde002_master_data=>tt_batch,
         condition_type      TYPE zif_zsde002_master_data=>tt_condition_type,
       END OF ty_unknown,
 
@@ -867,6 +869,8 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lt_storage_location    TYPE zif_zsde002_master_data=>tt_storage_location.
     DATA lt_product_unit        TYPE zif_zsde002_master_data=>tt_product_unit.
     DATA lt_mat_sales_area      TYPE zif_zsde002_master_data=>tt_mat_sales_area.
+    DATA lt_mat_plant           TYPE zif_zsde002_master_data=>tt_mat_plant.
+    DATA lt_batch               TYPE zif_zsde002_master_data=>tt_batch.
     DATA lt_condition_type      TYPE zif_zsde002_master_data=>tt_condition_type.
     DATA lt_customer_reference  TYPE zif_zsde002_master_data=>tt_customer_reference.
     DATA lt_unit                TYPE zif_zsde002_master_data=>tt_unit_external.
@@ -969,12 +973,19 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
         INSERT lv_currency INTO TABLE lt_currency.
       ENDIF.
 
-      " Order Condition Type
+      " Order Condition Type + Condition Currency
       LOOP AT <lfs_order>-pricings ASSIGNING FIELD-SYMBOL(<lfs_order_pricing>).
+
         IF <lfs_order_pricing>-condition_type IS NOT INITIAL.
           lv_condition_type = <lfs_order_pricing>-condition_type.
           INSERT lv_condition_type INTO TABLE lt_condition_type.
         ENDIF.
+
+        IF <lfs_order_pricing>-condition_currency IS NOT INITIAL.
+          lv_currency = <lfs_order_pricing>-condition_currency.
+          INSERT lv_currency INTO TABLE lt_currency.
+        ENDIF.
+
       ENDLOOP.
 
       " Item
@@ -985,6 +996,11 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
         IF <lfs_item>-material_number IS NOT INITIAL.
           lv_material = zcl_zsde002_validator=>to_internal_material( <lfs_item>-material_number ).
           INSERT lv_material INTO TABLE lt_product.
+        ENDIF.
+
+        IF <lfs_item>-plant IS NOT INITIAL.
+          lv_plant = <lfs_item>-plant.
+          INSERT lv_plant INTO TABLE lt_plant.
         ENDIF.
 
         IF  <lfs_item>-plant            IS NOT INITIAL
@@ -1011,18 +1027,53 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
                         ) INTO TABLE lt_mat_sales_area.
         ENDIF.
 
+        " material ต้อง extend ไป plant ของ item
+        IF  lv_material       IS NOT INITIAL
+        AND <lfs_item>-plant IS NOT INITIAL.
+          INSERT VALUE #( product = lv_material
+                          plant   = <lfs_item>-plant
+                        ) INTO TABLE lt_mat_plant.
+        ENDIF.
+
+        " Batch
+        " เก็บเฉพาะ process type ที่ส่ง batch ให้ RAP ให้ตรงกับเงื่อนไขใน create class
+        IF  lv_material                IS NOT INITIAL
+        AND <lfs_item>-plant          IS NOT INITIAL
+        AND <lfs_item>-batch          IS NOT INITIAL
+        AND <lfs_order>-process_type  IN gs_param-r_process_type_batch.
+          INSERT VALUE #( product = lv_material
+                          plant   = <lfs_item>-plant
+                          batch   = <lfs_item>-batch
+                        ) INTO TABLE lt_batch.
+        ENDIF.
+
         LOOP AT <lfs_item>-pricings ASSIGNING FIELD-SYMBOL(<lfs_item_pricing>).
+
           IF <lfs_item_pricing>-condition_type IS NOT INITIAL.
             lv_condition_type = <lfs_item_pricing>-condition_type.
             INSERT lv_condition_type INTO TABLE lt_condition_type.
           ENDIF.
+
+          IF <lfs_item_pricing>-condition_currency IS NOT INITIAL.
+            lv_currency = <lfs_item_pricing>-condition_currency.
+            INSERT lv_currency INTO TABLE lt_currency.
+          ENDIF.
+
+          " unit ของ condition ต้องเป็น unit ที่ material รู้จัก เหมือน sales unit
+          IF  lv_material                                  IS NOT INITIAL
+          AND <lfs_item_pricing>-condition_unit_of_measure IS NOT INITIAL.
+            INSERT VALUE #( product          = lv_material
+                            alternative_unit = to_internal_unit( <lfs_item_pricing>-condition_unit_of_measure )
+                          ) INTO TABLE lt_product_unit.
+          ENDIF.
+
         ENDLOOP.
 
       ENDLOOP.
 
     ENDLOOP.
 
-    " 16 SELECT ต่อ 1 request
+    " 20 SELECT ต่อ 1 request
     " กลุ่ม unknown คืนค่าที่ไม่มีอยู่จริงในระบบ
     gs_unknown-sales_area          = go_master_data->find_unknown_sales_area( lt_sales_area ).
     gs_unknown-cust_sales_area     = go_master_data->find_unknown_cust_sales_area( lt_cust_sales_area ).
@@ -1034,6 +1085,8 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     gs_unknown-storage_location    = go_master_data->find_unknown_storage_location( lt_storage_location ).
     gs_unknown-product_unit        = go_master_data->find_unknown_product_unit( lt_product_unit ).
     gs_unknown-mat_sales_area      = go_master_data->find_unknown_mat_sales_area( lt_mat_sales_area ).
+    gs_unknown-mat_plant           = go_master_data->find_unknown_mat_plant( lt_mat_plant ).
+    gs_unknown-batch               = go_master_data->find_unknown_batch( lt_batch ).
     gs_unknown-condition_type      = go_master_data->find_unknown_condition_type( lt_condition_type ).
 
     " กลุ่ม used คืนค่าที่มีอยู่แล้วในระบบ
@@ -1070,6 +1123,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lv_payment_terms  TYPE zif_zsde002_master_data=>ty_payment_terms.
     DATA lv_currency       TYPE zif_zsde002_master_data=>ty_currency.
     DATA lv_condition_type TYPE zif_zsde002_master_data=>ty_condition_type.
+    DATA lv_calc_type      TYPE zif_zsde002_master_data=>ty_calculation_type.
 
     IF  is_order-sales_organization   IS NOT INITIAL
     AND is_order-distribution_channel IS NOT INITIAL
@@ -1236,6 +1290,28 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
                         sf_header_id_ref = is_order-sf_header_id_ref
                         field            = zcl_zsde002_json=>to_json_name( 'condition_type' )
                       ) TO rt_error.
+
+      ELSE.
+        lv_calc_type = gs_param-t_condition_calc_type[ condition_type = lv_condition_type ]-calculation_type.
+
+        " Condition Currency
+        " RAP รับ currency เฉพาะ condition ที่ไม่ใช่เปอร์เซ็นต์ (A, H, I)
+        " เช็คให้ตรงกับที่ส่งจริงใน to_condition_values
+        lv_currency = <lfs_pricing>-condition_currency.
+
+        IF  lv_currency  IS NOT INITIAL
+        AND lv_calc_type <> 'A'
+        AND lv_calc_type <> 'H'
+        AND lv_calc_type <> 'I'
+        AND line_exists( gs_unknown-currency[ table_line = lv_currency ] ).
+          APPEND VALUE #( msgno            = '204'
+                          msgty            = 'E'
+                          msgtx            = message_text( iv_msgno = '204'
+                                                           iv_v1    = |{ <lfs_pricing>-condition_currency }| )
+                          sf_header_id_ref = is_order-sf_header_id_ref
+                          field            = zcl_zsde002_json=>to_json_name( 'condition_currency' )
+                        ) TO rt_error.
+        ENDIF.
       ENDIF.
     ENDLOOP.
 
@@ -1247,7 +1323,10 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lv_material       TYPE zif_zsde002_master_data=>ty_product.
     DATA lv_product        TYPE zif_zsde002_master_data=>ty_product.
     DATA lv_plant          TYPE zif_zsde002_master_data=>ty_plant.
+    DATA lv_valid_plant    TYPE zif_zsde002_master_data=>ty_plant.
     DATA lv_condition_type TYPE zif_zsde002_master_data=>ty_condition_type.
+    DATA lv_calc_type      TYPE zif_zsde002_master_data=>ty_calculation_type.
+    DATA lv_currency       TYPE zif_zsde002_master_data=>ty_currency.
 
     " Product
     " ส่ง MaterialNumber มา → เช็คกับ I_Product
@@ -1285,6 +1364,8 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
                         sf_item_id_ref   = is_item-sf_item_id_ref
                         field            = zcl_zsde002_json=>to_json_name( 'plant' )
                       ) TO rt_error.
+      ELSE.
+        lv_valid_plant = lv_plant.
       ENDIF.
     ENDIF.
 
@@ -1351,6 +1432,46 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
+    " Material + Plant
+    " material ต้อง extend ไป plant ของ item ก่อน SD จึงจะสร้าง item ได้
+    " ข้ามถ้า material หรือ plant หาไม่เจอ จะได้ไม่ขึ้น error ซ้อนกัน
+    IF  lv_material    IS NOT INITIAL
+    AND lv_valid_plant IS NOT INITIAL.
+
+      IF line_exists( gs_unknown-mat_plant[ product = lv_material
+                                            plant   = lv_valid_plant ] ).
+        APPEND VALUE #( msgno            = '257'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '257'
+                                                         iv_v1    = |{ is_item-material_number }|
+                                                         iv_v2    = |{ is_item-plant }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        sf_item_id_ref   = is_item-sf_item_id_ref
+                        field            = |{ zcl_zsde002_json=>to_json_name( 'material_number' ) }, | &&
+                                           |{ zcl_zsde002_json=>to_json_name( 'plant' ) }|
+                      ) TO rt_error.
+
+      " Batch
+      " เช็คเฉพาะ process type ที่ส่ง batch ให้ RAP
+      " อยู่ใน ELSE เพราะถ้า material ยังไม่ extend ไป plant จะขึ้น error ซ้อนกัน
+      ELSEIF is_item-batch       IS NOT INITIAL
+         AND is_order-process_type IN gs_param-r_process_type_batch
+         AND line_exists( gs_unknown-batch[ product = lv_material
+                                            plant   = lv_valid_plant
+                                            batch   = is_item-batch ] ).
+        APPEND VALUE #( msgno            = '260'
+                        msgty            = 'E'
+                        msgtx            = message_text( iv_msgno = '260'
+                                                         iv_v1    = |{ is_item-batch }|
+                                                         iv_v2    = |{ is_item-material_number }|
+                                                         iv_v3    = |{ is_item-plant }| )
+                        sf_header_id_ref = is_order-sf_header_id_ref
+                        sf_item_id_ref   = is_item-sf_item_id_ref
+                        field            = zcl_zsde002_json=>to_json_name( 'batch' )
+                      ) TO rt_error.
+      ENDIF.
+    ENDIF.
+
     " Item Condition Type
     LOOP AT it_pricing ASSIGNING FIELD-SYMBOL(<lfs_pricing>).
       CHECK <lfs_pricing>-condition_type IS NOT INITIAL.
@@ -1376,6 +1497,51 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
                         sf_item_id_ref   = is_item-sf_item_id_ref
                         field            = zcl_zsde002_json=>to_json_name( 'condition_type' )
                       ) TO rt_error.
+
+      ELSE.
+        lv_calc_type = gs_param-t_condition_calc_type[ condition_type = lv_condition_type ]-calculation_type.
+
+        " Condition Currency
+        " RAP รับ currency เฉพาะ condition ที่ไม่ใช่เปอร์เซ็นต์ (A, H, I)
+        " เช็คให้ตรงกับที่ส่งจริงใน to_condition_values
+        lv_currency = <lfs_pricing>-condition_currency.
+
+        IF  lv_currency  IS NOT INITIAL
+        AND lv_calc_type <> 'A'
+        AND lv_calc_type <> 'H'
+        AND lv_calc_type <> 'I'
+        AND line_exists( gs_unknown-currency[ table_line = lv_currency ] ).
+          APPEND VALUE #( msgno            = '204'
+                          msgty            = 'E'
+                          msgtx            = message_text( iv_msgno = '204'
+                                                           iv_v1    = |{ <lfs_pricing>-condition_currency }| )
+                          sf_header_id_ref = is_order-sf_header_id_ref
+                          sf_item_id_ref   = is_item-sf_item_id_ref
+                          field            = zcl_zsde002_json=>to_json_name( 'condition_currency' )
+                        ) TO rt_error.
+        ENDIF.
+
+        " Condition Unit
+        " RAP รับ unit เฉพาะ condition ต่อหน่วย คือที่ไม่ใช่เปอร์เซ็นต์ (A, H, I) และไม่ใช่จำนวนเงินคงที่ (B)
+        " ข้ามถ้า material หาไม่เจอ จะได้ไม่ขึ้น error ซ้อนกัน
+        IF  lv_material                            IS NOT INITIAL
+        AND <lfs_pricing>-condition_unit_of_measure IS NOT INITIAL
+        AND lv_calc_type <> 'A'
+        AND lv_calc_type <> 'H'
+        AND lv_calc_type <> 'I'
+        AND lv_calc_type <> 'B'
+        AND line_exists( gs_unknown-product_unit[ product          = lv_material
+                                                  alternative_unit = <lfs_pricing>-condition_unit_of_measure ] ).
+          APPEND VALUE #( msgno            = '261'
+                          msgty            = 'E'
+                          msgtx            = message_text( iv_msgno = '261'
+                                                           iv_v1    = |{ is_item-material_number }|
+                                                           iv_v2    = |{ <lfs_pricing>-condition_unit_of_measure }| )
+                          sf_header_id_ref = is_order-sf_header_id_ref
+                          sf_item_id_ref   = is_item-sf_item_id_ref
+                          field            = zcl_zsde002_json=>to_json_name( 'condition_unit_of_measure' )
+                        ) TO rt_error.
+        ENDIF.
       ENDIF.
     ENDLOOP.
 
