@@ -14,7 +14,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_cmr_update IMPLEMENTATION.
+CLASS ZCL_ZSDE002_CMR_UPDATE IMPLEMENTATION.
+
 
   METHOD get_target.
 
@@ -24,5 +25,4 @@ CLASS zcl_zsde002_cmr_update IMPLEMENTATION.
                          item_key     = `CreditMemoRequestItem` ).
 
   ENDMETHOD.
-
 ENDCLASS.

@@ -14,7 +14,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_dmr_update IMPLEMENTATION.
+CLASS ZCL_ZSDE002_DMR_UPDATE IMPLEMENTATION.
+
 
   METHOD get_target.
 
@@ -24,5 +25,4 @@ CLASS zcl_zsde002_dmr_update IMPLEMENTATION.
                          item_key     = `DebitMemoRequestItem` ).
 
   ENDMETHOD.
-
 ENDCLASS.

@@ -26,7 +26,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_ret_update IMPLEMENTATION.
+CLASS ZCL_ZSDE002_RET_UPDATE IMPLEMENTATION.
 
 
   METHOD get_target.
@@ -54,5 +54,4 @@ CLASS zcl_zsde002_ret_update IMPLEMENTATION.
                                iv_body    = |\{"ShippingCondition":"{ is_header-shipping_condition }"\}| ).
 
   ENDMETHOD.
-
 ENDCLASS.

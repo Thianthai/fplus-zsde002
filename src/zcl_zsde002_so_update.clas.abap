@@ -14,7 +14,8 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_so_update IMPLEMENTATION.
+CLASS ZCL_ZSDE002_SO_UPDATE IMPLEMENTATION.
+
 
   METHOD get_target.
 
@@ -24,5 +25,4 @@ CLASS zcl_zsde002_so_update IMPLEMENTATION.
                          item_key     = `SalesOrderItem` ).
 
   ENDMETHOD.
-
 ENDCLASS.

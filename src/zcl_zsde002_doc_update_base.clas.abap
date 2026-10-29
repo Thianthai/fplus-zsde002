@@ -58,7 +58,7 @@ ENDCLASS.
 
 
 
-CLASS zcl_zsde002_doc_update_base IMPLEMENTATION.
+CLASS ZCL_ZSDE002_DOC_UPDATE_BASE IMPLEMENTATION.
 
 
   METHOD zif_zsde002_doc_update~update_items.
@@ -192,5 +192,4 @@ CLASS zcl_zsde002_doc_update_base IMPLEMENTATION.
                         ELSE |HTTP { ls_status-code } { ls_status-reason }| ).
 
   ENDMETHOD.
-
 ENDCLASS.
