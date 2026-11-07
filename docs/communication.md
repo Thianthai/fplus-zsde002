@@ -65,6 +65,8 @@ API-URL ของ tenant: `https://my442178-api.s4hana.cloud.sap`
 
 Handler class คือ `ZCL_ZSDE002_HTTP`
 
+รายละเอียด request และ response อยู่ใน [api-so-create.md](api-so-create.md)
+
 ## Outbound Service
 
 ทั้ง 5 ตัวอยู่ใน `ZCA_SO_UPDATE_OUT` เป็น HTTP Service, Active และ port 443
