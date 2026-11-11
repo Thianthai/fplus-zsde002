@@ -84,7 +84,6 @@ CLASS zcl_zsde002_validator DEFINITION
         payer                         TYPE string,
         customer_reference            TYPE string,
         document_date                 TYPE string,
-        shipping_conditions           TYPE string,
         sf_header_id_ref              TYPE string,
         " บังคับตามเงื่อนไข
         stock_van                     TYPE string,

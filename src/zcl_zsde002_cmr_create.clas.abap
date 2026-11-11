@@ -61,8 +61,7 @@ CLASS ZCL_ZSDE002_CMR_CREATE IMPLEMENTATION.
                       CreditMemoRequestDate     = to_internal_date( is_order-document_date )
                       TransactionCurrency       = is_order-currency
                       CustomerPaymentTerms      = is_order-payment_term
-                      SDDocumentReason          = COND #( WHEN is_order-tran_type IN is_param-r_tran_type_reason
-                                                          THEN is_order-order_reason )
+                      SDDocumentReason          = is_order-order_reason
                     ) TO lt_header.
 
     ENDIF.
@@ -91,8 +90,10 @@ CLASS ZCL_ZSDE002_CMR_CREATE IMPLEMENTATION.
                     ) TO ls_partner-%target.
     ENDIF.
 
-    IF  is_order-stock_van IS NOT INITIAL
-    AND is_order-process_type IN is_param-r_process_type_stockvan.
+    " field แบบ C ใน spec
+    " process type ใช้แค่ตอนเช็ค mandatory
+    " ส่งมาเมื่อไหร่ก็ส่งต่อให้ RAP
+    IF is_order-stock_van IS NOT INITIAL.
       APPEND VALUE #( %cid                   = next_cid( `PA` )
                       PartnerFunctionForEdit = 'SB'
                       Customer               = is_order-stock_van
@@ -145,15 +146,13 @@ CLASS ZCL_ZSDE002_CMR_CREATE IMPLEMENTATION.
     APPEND VALUE #( %cid              = next_cid( `HT` )
                     LanguageForEdit   = gc_langu
                     LongTextIDForEdit = 'ZT01'
-                    LongText          = COND #( WHEN is_order-process_type IN is_param-r_process_type_zt01
-                                                THEN is_order-payment_transaction_reference )
+                    LongText          = is_order-payment_transaction_reference
                   ) TO ls_headertext-%target.
 
     APPEND VALUE #( %cid              = next_cid( `HT` )
                     LanguageForEdit   = gc_langu
                     LongTextIDForEdit = 'ZT02'
-                    LongText          = COND #( WHEN is_order-process_type IN is_param-r_process_type_zt02
-                                                THEN is_order-tax_document_no )
+                    LongText          = is_order-tax_document_no
                   ) TO ls_headertext-%target.
 
     APPEND VALUE #( %cid              = next_cid( `HT` )
@@ -165,8 +164,7 @@ CLASS ZCL_ZSDE002_CMR_CREATE IMPLEMENTATION.
     APPEND VALUE #( %cid              = next_cid( `HT` )
                     LanguageForEdit   = gc_langu
                     LongTextIDForEdit = 'ZT04'
-                    LongText          = COND #( WHEN is_order-order_reason IN is_param-r_order_reason_zt04
-                                                THEN is_order-order_reason_text )
+                    LongText          = is_order-order_reason_text
                   ) TO ls_headertext-%target.
 
     APPEND VALUE #( %cid              = next_cid( `HT` )
@@ -198,8 +196,7 @@ CLASS ZCL_ZSDE002_CMR_CREATE IMPLEMENTATION.
                       RequestedQuantity             = to_internal_quantity( <lfs_item>-requested_quantity )
                       RequestedQuantityUnit         = <lfs_item>-sales_unit
                       Plant                         = <lfs_item>-plant
-                      Batch                         = COND #( WHEN is_order-process_type IN is_param-r_process_type_batch
-                                                              THEN <lfs_item>-batch )
+                      Batch                         = <lfs_item>-batch
                       " custom field FOC ของ sales document item
                       " ค่าต้องอยู่ใน code list ของ field ถ้าไม่อยู่ RAP จะปฏิเสธเอง
                       yy1_foc_pa_sdi                = <lfs_item>-promotion_id_text
@@ -262,8 +259,7 @@ CLASS ZCL_ZSDE002_CMR_CREATE IMPLEMENTATION.
       APPEND VALUE #( %cid              = next_cid( `IX` )
                       LanguageForEdit   = gc_langu
                       LongTextIDForEdit = 'ZT09'
-                      LongText          = COND #( WHEN is_order-process_type IN is_param-r_process_type_sfid
-                                                  THEN <lfs_item>-sf_item_id_ref )
+                      LongText          = <lfs_item>-sf_item_id_ref
                     ) TO ls_itemtext-%target.
 
       DELETE ls_itemtext-%target WHERE LongText IS INITIAL.
