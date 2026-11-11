@@ -55,8 +55,11 @@ CLASS ZCL_ZSDE002_SO_CREATE IMPLEMENTATION.
                       DistributionChannel       = is_order-distribution_channel
                       OrganizationDivision      = is_order-division
                       SoldToParty               = is_order-sold_to_party
-                      " EDI / ONLINE ยังไม่ได้กำหนดว่าดึงจาก field ไหน คงเงื่อนไขเดิมไว้ก่อน
+                      " Salesforce ส่ง Salesforce ID และ EDI ส่งเลข PO ของลูกค้า
+                      " ค่านี้ใช้เช็คเอกสารซ้ำกับเอกสารที่สร้างไปแล้วด้วย
+                      " Online ยังไม่ได้กำหนด จึงยังไม่ส่ง
                       PurchaseOrderByCustomer   = COND #( WHEN is_order-process_type IN is_param-r_process_type_sfid
+                                                            OR is_order-process_type IN is_param-r_process_type_edi
                                                           THEN is_order-customer_reference )
                       CustomerPurchaseOrderDate = to_internal_date( is_order-customer_reference_date )
                       SalesOrderDate            = to_internal_date( is_order-document_date )
