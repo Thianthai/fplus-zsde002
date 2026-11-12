@@ -286,7 +286,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lt_item_pricings  TYPE tt_item_pricing.
     DATA lt_item_result    TYPE zif_zsde002_doc_create=>tt_item_result.
     DATA lt_error          TYPE tt_error.
-    DATA lv_used_document  TYPE zif_zsde002_master_data=>ty_used_customer_ref-sales_document.
+    DATA ls_used_cust_ref  TYPE zif_zsde002_master_data=>ty_used_customer_ref.
 
     " 1. Constant Parameter --------------------------------------------
     get_constant_param( EXPORTING io_param  = go_param
@@ -416,20 +416,34 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
       ENDIF.
 
       " Duplicate CustomerReference
-      " ซ้ำกับเอกสารที่สร้างไปแล้ว -> 017 พร้อมเลขเอกสาร
+      " ซ้ำกับเอกสารที่สร้างไปแล้ว และมี request id ใน log -> 017 พร้อมเลขเอกสารและ request id
+      " ซ้ำกับเอกสารที่สร้างไปแล้ว แต่ไม่มี request id เช่น สร้างด้วยมือ -> 019 พร้อมเลขเอกสาร
       " ซ้ำกันเองภายใน request -> 018 เพราะยังไม่มีเลขเอกสารให้แสดง
-      " ถ้าเข้าทั้งสองกรณี แสดงแค่ 017 เพราะเลขเอกสารช่วยไล่ปัญหาได้มากกว่า
+      " ถ้าเข้าทั้งซ้ำกับเอกสารและซ้ำใน request แสดงแค่ 017 หรือ 019 เพราะเลขเอกสารช่วยไล่ปัญหาได้มากกว่า
       IF ls_order-customer_reference IS NOT INITIAL.
 
-        lv_used_document = VALUE #( gs_used-cust_ref[ customer_reference = ls_order-customer_reference ]-sales_document
+        ls_used_cust_ref = VALUE #( gs_used-cust_ref[ customer_reference = ls_order-customer_reference ]
                                     OPTIONAL ).
 
-        IF lv_used_document IS NOT INITIAL.
+        IF ls_used_cust_ref-sales_document IS NOT INITIAL
+           AND ls_used_cust_ref-request_id IS NOT INITIAL.
           APPEND VALUE #( msgno            = '017'
                           msgty            = 'E'
                           msgtx            = message_text( iv_msgno = '017'
                                                            iv_v1    = |{ ls_order-customer_reference }|
-                                                           iv_v2    = shift_left( val = CONV string( lv_used_document )
+                                                           iv_v2    = shift_left( val = CONV string( ls_used_cust_ref-sales_document )
+                                                                                  sub = '0' )
+                                                           iv_v3    = |{ ls_used_cust_ref-request_id }| )
+                          sf_header_id_ref = ls_order-sf_header_id_ref
+                          field            = zcl_zsde002_json=>to_json_name( 'customer_reference' )
+                        ) TO lt_error.
+
+        ELSEIF ls_used_cust_ref-sales_document IS NOT INITIAL.
+          APPEND VALUE #( msgno            = '019'
+                          msgty            = 'E'
+                          msgtx            = message_text( iv_msgno = '019'
+                                                           iv_v1    = |{ ls_order-customer_reference }|
+                                                           iv_v2    = shift_left( val = CONV string( ls_used_cust_ref-sales_document )
                                                                                   sub = '0' ) )
                           sf_header_id_ref = ls_order-sf_header_id_ref
                           field            = zcl_zsde002_json=>to_json_name( 'customer_reference' )

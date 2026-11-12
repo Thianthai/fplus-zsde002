@@ -105,10 +105,11 @@ INTERFACE zif_zsde002_master_data
     tt_unit_map TYPE SORTED TABLE OF ty_unit_map
                 WITH UNIQUE KEY external_unit,
 
-    "! Customer Reference ที่ถูกใช้ไปแล้ว พร้อมเลขเอกสารที่ใช้
+    "! Customer Reference ที่ถูกใช้ไปแล้ว พร้อมเลขเอกสารและ request id ที่สร้างเอกสารนั้น
     BEGIN OF ty_used_customer_ref,
       customer_reference TYPE ty_customer_reference,
       sales_document     TYPE I_SalesOrder-SalesOrder,
+      request_id         TYPE ztsd_e002_order-request_id,
     END OF ty_used_customer_ref.
 
   TYPES:
@@ -168,7 +169,7 @@ INTERFACE zif_zsde002_master_data
   "! ตรงข้ามกับ find_unknown_* — คืน "ตัวที่เจอ" ไม่ใช่ "ตัวที่ไม่เจอ"
   "! เพราะกฎคือ reference หนึ่งตัวสร้างเอกสารได้ครั้งเดียว
   "! @parameter it_key    | Customer Reference ที่ต้องการเช็ค
-  "! @parameter rt_result | reference ที่ถูกใช้แล้ว กับเลขเอกสารที่น้อยที่สุดของ reference นั้น
+  "! @parameter rt_result | reference ที่ถูกใช้แล้ว กับเลขเอกสารที่น้อยที่สุด และ request id ล่าสุดของเอกสารนั้น
   METHODS read_used_customer_ref
     IMPORTING it_key           TYPE tt_customer_reference
     RETURNING VALUE(rt_result) TYPE tt_used_customer_ref.

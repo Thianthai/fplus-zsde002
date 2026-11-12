@@ -34,6 +34,7 @@ CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
     DATA lr_customer_reference TYPE RANGE OF zif_zsde002_master_data=>ty_customer_reference.
     DATA lt_used               TYPE STANDARD TABLE OF zif_zsde002_master_data=>ty_used_customer_ref
                                WITH EMPTY KEY.
+    DATA lr_sales_document     TYPE RANGE OF zif_zsde002_master_data=>ty_used_customer_ref-sales_document.
 
     IF it_key IS INITIAL.
       RETURN.
@@ -83,6 +84,30 @@ CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
 
     LOOP AT lt_used ASSIGNING FIELD-SYMBOL(<lfs_used>).
       INSERT <lfs_used> INTO TABLE rt_result.
+    ENDLOOP.
+
+    IF rt_result IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    " หา request id จาก log ของ ZSDE002 เพื่อเอาไปแสดงใน message
+    " เอกสารที่สร้างด้วยมือหรือข้อมูลเก่าจะไม่มีแถวใน log -> request_id ว่าง
+    lr_sales_document = VALUE #( FOR <lfs_doc> IN rt_result
+                               ( sign = 'I' option = 'EQ' low = <lfs_doc>-sales_document ) ).
+
+    " เรียง created_at มากไปน้อย ถ้าเอกสารเดียวมีหลายแถว แถวแรกคือแถวล่าสุด
+    SELECT FROM ztsd_e002_order
+      FIELDS sales_order_number,
+             request_id
+      WHERE sales_order_number IN @lr_sales_document
+      ORDER BY sales_order_number, created_at DESCENDING
+      INTO TABLE @DATA(lt_log).
+
+    DELETE ADJACENT DUPLICATES FROM lt_log COMPARING sales_order_number.
+
+    LOOP AT rt_result ASSIGNING FIELD-SYMBOL(<lfs_result>).
+      <lfs_result>-request_id = VALUE #( lt_log[ sales_order_number = <lfs_result>-sales_document ]-request_id
+                                         OPTIONAL ).
     ENDLOOP.
 
   ENDMETHOD.
