@@ -207,16 +207,57 @@ Response จริงของ O250000037
 
 | ระดับ | บังคับเสมอ | บังคับตามเงื่อนไข |
 |---|---|---|
-| Header | `SfHeaderIdRef`, `SalesOrderTempId`, `ProcessType`, `TranType`, `SalesOrderType`, `SalesOrganization`, `DistributionChannel`, `Division`, `SoldToParty`, `ShipToParty`, `BillToParty`, `Payer`, `CustomerReference`, `DocumentDate`, `ShippingConditions` | `StockVan`, `PaymentTransactionReference`, `TaxDocumentNo`, `OrderReason`, `OrderReasonText` |
+| Header | `SfHeaderIdRef`, `SalesOrderTempId`, `ProcessType`, `TranType`, `SalesOrderType`, `SalesOrganization`, `DistributionChannel`, `Division`, `SoldToParty`, `ShipToParty`, `BillToParty`, `Payer`, `CustomerReference`, `DocumentDate` | `StockVan`, `PaymentTransactionReference`, `TaxDocumentNo`, `OrderReason`, `OrderReasonText` |
 | Item | ไม่มี | `MaterialNumber` (เมื่อไม่ส่ง `CustomerMaterial`), `StorageLocation`, `Batch`, `SfItemIdRef` |
 
 เงื่อนไขส่วนใหญ่กำหนดจาก `ZTBC_PARAM` ตาม process type หรือ tran type
+
+`ShippingConditions` ไม่บังคับตั้งแต่ commit `73220d3` ถ้าส่งมากับ Sales Order หรือ Customer Return จะเช็คว่ามีอยู่จริง (`ZSDE002/212`)
 
 ## Field ที่รับแต่ไม่ได้ใช้สร้างเอกสาร
 
 | Field | สิ่งที่โปรแกรมทำ | เหตุผล |
 |---|---|---|
 | `CustomerBranch` | เก็บลง log (`ZTSD_E002_ORDER-CUSTOMER_BRANCH`) อย่างเดียว ไม่ validate และไม่ส่งเข้าเอกสาร | BOT เป็นคนแก้ branch code บนเอกสารเองผ่านหน้าจอ automation หลังได้เลขเอกสารจาก API นี้ (ผู้ใช้ยืนยัน 2026-11-10) |
+
+## Message เมื่อ CustomerReference ซ้ำ
+
+CustomerReference หนึ่งค่าใช้สร้างเอกสารได้ครั้งเดียว ไม่ว่าจะเป็นเอกสารประเภทไหน
+โปรแกรมเช็คกับ Sales Order, Customer Return, Credit Memo Request และ Debit Memo Request ทั้งหมด
+แต่ไม่นับเอกสารที่ถูก reject ทั้งใบ จึงยิงซ้ำด้วย reference เดิมได้หลัง reject เอกสารที่ผิด
+
+| Code | ข้อความ | ใช้เมื่อ |
+|---|---|---|
+| `ZSDE002/017` | `Duplicate transaction found for customer reference &1 [SO:&2]-[&3]` | reference ถูกใช้กับเอกสารที่สร้างผ่าน API นี้แล้ว |
+| `ZSDE002/019` | `Duplicate transaction found for customer reference &1 [SO:&2]` | reference ถูกใช้กับเอกสารที่ไม่มีใน log ของ API นี้ เช่น เอกสารที่สร้างด้วยมือ |
+| `ZSDE002/018` | `Customer reference &1 is duplicated in this request` | reference เดียวกันอยู่ในหลาย order ของ request เดียว |
+
+- `&1` คือ CustomerReference ที่ส่งมา
+- `&2` คือเลขเอกสารที่ใช้ reference นี้ไปแล้ว ถ้ามีหลายใบ จะแสดงเลขที่น้อยที่สุด
+- `&3` คือ `RequestId` ของ request ที่สร้างเอกสาร `&2` อ่านจาก `ZTSD_E002_ORDER-REQUEST_ID`
+  ถ้าเอกสารนั้นมีหลายแถวใน log จะใช้แถวล่าสุดตาม `CREATED_AT`
+- ถ้า order ซ้ำทั้งกับเอกสารที่มีอยู่และซ้ำใน request เดียวกัน จะได้แค่ 017 หรือ 019 เพราะเลขเอกสารช่วยไล่ปัญหาได้มากกว่า
+- ทั้งสามข้อความเป็น `E` และ `Field` เป็น `CustomerReference`
+
+ตัวอย่างแถวใน `Orders` ของ 017 ค่าเป็นตัวอย่าง ไม่ใช่ response จริง
+
+```json
+{
+  "Status": "E",
+  "Code": "ZSDE002/017",
+  "Message": "Duplicate transaction found for customer reference b8MAz000002fJqwMAE [SO:O250000037]-[20261014_114329_114331]",
+  "SalesOrderNumber": "",
+  "DocumentType": "CCIS",
+  "CustomerReference": "b8MAz000002fJqwMAE",
+  "SfHeaderIdRef": "b8MAz000002fJqwMAE",
+  "SfItemIdRef": "",
+  "ProcessingDate": "15-10-2026",
+  "ProcessingTime": "09:00:00",
+  "Field": "CustomerReference"
+}
+```
+
+สถานะ: เพิ่มใน commit `f98461e` (เลขเอกสาร และ 018) และ `38d85cd` (RequestId และ 019) ยังรอ functional ทดสอบบน tenant
 
 ## ข้อควรรู้สำหรับฝั่ง SBPA
 
