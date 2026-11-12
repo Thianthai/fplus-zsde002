@@ -32,6 +32,8 @@ CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
     CONSTANTS lc_fully_rejected TYPE I_SalesOrder-OverallSDDocumentRejectionSts VALUE 'C'.
 
     DATA lr_customer_reference TYPE RANGE OF zif_zsde002_master_data=>ty_customer_reference.
+    DATA lt_used               TYPE STANDARD TABLE OF zif_zsde002_master_data=>ty_used_customer_ref
+                               WITH EMPTY KEY.
 
     IF it_key IS INITIAL.
       RETURN.
@@ -41,49 +43,46 @@ CLASS ZCL_ZSDE002_MASTER_DATA IMPLEMENTATION.
                                    ( sign = 'I' option = 'EQ' low = <lfs_for> ) ).
 
     " PRIVILEGED ACCESS: comm user ที่ SBPA ใช้ ไม่มี role อ่านเอกสารขาย
-    " อ่านเพื่อเช็คว่า reference เคยถูกใช้แล้วหรือยังเท่านั้น ไม่ได้ส่งข้อมูลกลับไปให้ผู้เรียก
+    " อ่านเพื่อเช็คว่า reference เคยถูกใช้แล้วหรือยัง และเอาเลขเอกสารไปแสดงใน message
     " ใบที่ถูก reject ทั้งใบไม่นับว่าเคยใช้ SBPA จะได้ยิงซ้ำเพื่อแก้ของที่ผิดได้
-    " เช็คข้ามทุกประเภทเอกสาร (business ยืนยัน 2026-09-16) — reference หนึ่งค่าใช้ได้ครั้งเดียว
-    " ไม่ว่าจะเป็น order / credit memo / debit memo / return · rt_result เป็น sorted unique
-    " จึง INSERT ซ้ำจากคนละ view ได้โดยไม่ต้อง DISTINCT ข้าม view
+    " เช็คข้ามทุกประเภทเอกสาร (business ยืนยัน 2026-09-16)
+    " reference หนึ่งค่าใช้ได้ครั้งเดียว ไม่ว่าจะเป็น order / return / credit memo / debit memo
     SELECT FROM I_SalesOrder WITH PRIVILEGED ACCESS
-      FIELDS DISTINCT PurchaseOrderByCustomer
+      FIELDS PurchaseOrderByCustomer AS customer_reference,
+             SalesOrder              AS sales_document
       WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
         AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
-      INTO TABLE @DATA(lt_used).
-
-    LOOP AT lt_used ASSIGNING FIELD-SYMBOL(<lfs_used>).
-      INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
-    ENDLOOP.
-
-    SELECT FROM I_CreditMemoRequest WITH PRIVILEGED ACCESS
-      FIELDS DISTINCT PurchaseOrderByCustomer
-      WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
-        AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
-      INTO TABLE @lt_used.
-
-    LOOP AT lt_used ASSIGNING <lfs_used>.
-      INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
-    ENDLOOP.
-
-    SELECT FROM I_DebitMemoRequest WITH PRIVILEGED ACCESS
-      FIELDS DISTINCT PurchaseOrderByCustomer
-      WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
-        AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
-      INTO TABLE @lt_used.
-
-    LOOP AT lt_used ASSIGNING <lfs_used>.
-      INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
-    ENDLOOP.
+      APPENDING TABLE @lt_used.
 
     SELECT FROM I_CustomerReturn WITH PRIVILEGED ACCESS
-      FIELDS DISTINCT PurchaseOrderByCustomer
+      FIELDS PurchaseOrderByCustomer AS customer_reference,
+             CustomerReturn          AS sales_document
       WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
         AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
-      INTO TABLE @lt_used.
+      APPENDING TABLE @lt_used.
 
-    LOOP AT lt_used ASSIGNING <lfs_used>.
-      INSERT <lfs_used>-PurchaseOrderByCustomer INTO TABLE rt_result.
+    SELECT FROM I_CreditMemoRequest WITH PRIVILEGED ACCESS
+      FIELDS PurchaseOrderByCustomer AS customer_reference,
+             CreditMemoRequest       AS sales_document
+      WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
+        AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
+      APPENDING TABLE @lt_used.
+
+    SELECT FROM I_DebitMemoRequest WITH PRIVILEGED ACCESS
+      FIELDS PurchaseOrderByCustomer AS customer_reference,
+             DebitMemoRequest        AS sales_document
+      WHERE PurchaseOrderByCustomer       IN @lr_customer_reference
+        AND OverallSDDocumentRejectionSts <> @lc_fully_rejected
+      APPENDING TABLE @lt_used.
+
+    " reference เดียวอาจมีหลายเอกสาร เช่น ข้อมูลเก่าหรือที่สร้างด้วยมือ
+    " เรียงเลขเอกสารน้อยไปมาก แล้ว INSERT ลง table ที่ key ไม่ซ้ำ
+    " ใบแรกของแต่ละ reference จึงเป็นใบที่ถูกเก็บ ใบถัดไปถูกข้าม
+    " เรียงด้วย ORDER BY ไม่ได้ เพราะข้อมูลมาจาก 4 view
+    SORT lt_used BY customer_reference sales_document.
+
+    LOOP AT lt_used ASSIGNING FIELD-SYMBOL(<lfs_used>).
+      INSERT <lfs_used> INTO TABLE rt_result.
     ENDLOOP.
 
   ENDMETHOD.

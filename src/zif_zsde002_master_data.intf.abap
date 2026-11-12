@@ -103,7 +103,13 @@ INTERFACE zif_zsde002_master_data
 
     "! คู่รหัสหน่วยทั้ง request
     tt_unit_map TYPE SORTED TABLE OF ty_unit_map
-                WITH UNIQUE KEY external_unit.
+                WITH UNIQUE KEY external_unit,
+
+    "! Customer Reference ที่ถูกใช้ไปแล้ว พร้อมเลขเอกสารที่ใช้
+    BEGIN OF ty_used_customer_ref,
+      customer_reference TYPE ty_customer_reference,
+      sales_document     TYPE I_SalesOrder-SalesOrder,
+    END OF ty_used_customer_ref.
 
   TYPES:
     tt_process_type        TYPE SORTED TABLE OF ty_process_type
@@ -148,19 +154,24 @@ INTERFACE zif_zsde002_master_data
                            WITH UNIQUE KEY product plant,
     "! รายการ batch ของทั้ง request
     tt_batch               TYPE SORTED TABLE OF ty_batch
-                           WITH UNIQUE KEY product plant batch.
+                           WITH UNIQUE KEY product plant batch,
+    "! 1 reference เก็บเลขเอกสารใบเดียว คือเลขที่น้อยที่สุด
+    tt_used_customer_ref TYPE SORTED TABLE OF ty_used_customer_ref
+                         WITH UNIQUE KEY customer_reference.
 
   "! อ่าน process type mapping ทั้งใบ — ต่างจาก find_unknown_* ตรงที่คืนทุกแถว
   "! ไม่ใช่เฉพาะที่หาไม่เจอ เพราะ validation ต้องเทียบค่าใน row ไม่ใช่แค่เช็คว่ามีอยู่
   METHODS read_process_type
     RETURNING VALUE(rt_result) TYPE tt_process_type.
 
-  "! คืน Customer Reference ที่ถูกใช้สร้าง sales order ไปแล้ว
+  "! คืน Customer Reference ที่ถูกใช้สร้างเอกสารไปแล้ว พร้อมเลขเอกสาร
   "! ตรงข้ามกับ find_unknown_* — คืน "ตัวที่เจอ" ไม่ใช่ "ตัวที่ไม่เจอ"
-  "! เพราะกฎคือ reference หนึ่งตัวสร้าง SO ได้ครั้งเดียว
+  "! เพราะกฎคือ reference หนึ่งตัวสร้างเอกสารได้ครั้งเดียว
+  "! @parameter it_key    | Customer Reference ที่ต้องการเช็ค
+  "! @parameter rt_result | reference ที่ถูกใช้แล้ว กับเลขเอกสารที่น้อยที่สุดของ reference นั้น
   METHODS read_used_customer_ref
     IMPORTING it_key           TYPE tt_customer_reference
-    RETURNING VALUE(rt_result) TYPE tt_customer_reference.
+    RETURNING VALUE(rt_result) TYPE tt_used_customer_ref.
 
   "! อ่าน SD document category ของ doc type ที่ส่งมา คืนเฉพาะตัวที่มีอยู่จริง
   "! C = order → I_SalesOrderTP · H = return → I_CustomerReturnTP

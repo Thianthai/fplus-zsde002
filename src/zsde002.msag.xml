@@ -60,7 +60,13 @@
      <SPRSL>E</SPRSL>
      <ARBGB>ZSDE002</ARBGB>
      <MSGNR>017</MSGNR>
-     <TEXT>Duplicate transaction found for customer reference &amp;1</TEXT>
+     <TEXT>Duplicate transaction found for customer reference &amp;1 [SO:&amp;2]</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZSDE002</ARBGB>
+     <MSGNR>018</MSGNR>
+     <TEXT>Customer reference &amp;1 is duplicated in this request</TEXT>
     </T100>
     <T100>
      <SPRSL>E</SPRSL>

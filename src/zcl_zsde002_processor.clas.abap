@@ -99,7 +99,7 @@ CLASS zcl_zsde002_processor DEFINITION
       "! ผลการเช็คของทั้ง request — เก็บเฉพาะค่าที่ "ถูกใช้ไปแล้ว"
       "! ตรงข้ามกับ ty_unknown ที่เก็บค่าที่ "ไม่เจอ"
       BEGIN OF ty_used,
-        cust_ref TYPE zif_zsde002_master_data=>tt_customer_reference,
+        cust_ref TYPE zif_zsde002_master_data=>tt_used_customer_ref,
       END OF ty_used.
 
     METHODS constructor
@@ -286,6 +286,7 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
     DATA lt_item_pricings  TYPE tt_item_pricing.
     DATA lt_item_result    TYPE zif_zsde002_doc_create=>tt_item_result.
     DATA lt_error          TYPE tt_error.
+    DATA lv_used_document  TYPE zif_zsde002_master_data=>ty_used_customer_ref-sales_document.
 
     " 1. Constant Parameter --------------------------------------------
     get_constant_param( EXPORTING io_param  = go_param
@@ -414,18 +415,36 @@ CLASS ZCL_ZSDE002_PROCESSOR IMPLEMENTATION.
                       ) TO lt_error.
       ENDIF.
 
-      " Duplicate CustomerReference — ซ้ำกันเองใน request หรือเคยสร้าง SO ไปแล้ว
-      " ใช้ message เดียวกันทั้งสองกรณี เพราะผลลัพธ์สำหรับ SBPA เหมือนกันคือ transaction นี้ซ้ำ
-      IF  ls_order-customer_reference IS NOT INITIAL
-      AND (    line_exists( lt_duplicate_cust_ref[ table_line = |{ ls_order-customer_reference }| ] )
-            OR line_exists( gs_used-cust_ref[ table_line = ls_order-customer_reference ] ) ).
-        APPEND VALUE #( msgno            = '017'
-                        msgty            = 'E'
-                        msgtx            = message_text( iv_msgno = '017'
-                                                         iv_v1    = |{ ls_order-customer_reference }| )
-                        sf_header_id_ref = ls_order-sf_header_id_ref
-                        field            = zcl_zsde002_json=>to_json_name( 'customer_reference' )
-                      ) TO lt_error.
+      " Duplicate CustomerReference
+      " ซ้ำกับเอกสารที่สร้างไปแล้ว -> 017 พร้อมเลขเอกสาร
+      " ซ้ำกันเองภายใน request -> 018 เพราะยังไม่มีเลขเอกสารให้แสดง
+      " ถ้าเข้าทั้งสองกรณี แสดงแค่ 017 เพราะเลขเอกสารช่วยไล่ปัญหาได้มากกว่า
+      IF ls_order-customer_reference IS NOT INITIAL.
+
+        lv_used_document = VALUE #( gs_used-cust_ref[ customer_reference = ls_order-customer_reference ]-sales_document
+                                    OPTIONAL ).
+
+        IF lv_used_document IS NOT INITIAL.
+          APPEND VALUE #( msgno            = '017'
+                          msgty            = 'E'
+                          msgtx            = message_text( iv_msgno = '017'
+                                                           iv_v1    = |{ ls_order-customer_reference }|
+                                                           iv_v2    = shift_left( val = CONV string( lv_used_document )
+                                                                                  sub = '0' ) )
+                          sf_header_id_ref = ls_order-sf_header_id_ref
+                          field            = zcl_zsde002_json=>to_json_name( 'customer_reference' )
+                        ) TO lt_error.
+
+        ELSEIF line_exists( lt_duplicate_cust_ref[ table_line = |{ ls_order-customer_reference }| ] ).
+          APPEND VALUE #( msgno            = '018'
+                          msgty            = 'E'
+                          msgtx            = message_text( iv_msgno = '018'
+                                                           iv_v1    = |{ ls_order-customer_reference }| )
+                          sf_header_id_ref = ls_order-sf_header_id_ref
+                          field            = zcl_zsde002_json=>to_json_name( 'customer_reference' )
+                        ) TO lt_error.
+        ENDIF.
+
       ENDIF.
 
       " 6.3 Check Empty Item -------------------------------------------
