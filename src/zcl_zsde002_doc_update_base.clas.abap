@@ -31,6 +31,7 @@ CLASS zcl_zsde002_doc_update_base DEFINITION
       RETURNING VALUE(rs_result) TYPE ty_target.
 
     "! GET เพื่อขอ CSRF token และ ETag แล้ว PATCH entity 1 ตัว
+    "! ถ้าเอกสารยังบันทึกไม่เสร็จหรือยังถูก lock จะรอแล้วลองใหม่ตาม gc_max_attempt
     "! ใช้ได้ทั้ง OData V2 และ V4
     "! @parameter iv_service | outbound service ใน scenario ZCS_SO_UPDATE_OUT
     "! @parameter iv_uri     | path ของ entity ต่อจาก path prefix ของ service
@@ -47,12 +48,38 @@ CLASS zcl_zsde002_doc_update_base DEFINITION
     "! outbound communication ที่ชี้ไปหา API ของ tenant เดียวกัน
     CONSTANTS gc_scenario TYPE if_com_management=>ty_cscn_id VALUE 'ZCS_SO_UPDATE_OUT'.
 
+    "! จำนวนครั้งสูงสุดที่ลอง GET + PATCH ต่อ entity
+    CONSTANTS gc_max_attempt  TYPE i VALUE 5.
+
+    "! วินาทีที่รอก่อนลองครั้งถัดไป
+    CONSTANTS gc_wait_seconds TYPE i VALUE 1.
+
     "! อ่านข้อความ error จาก response ของ OData
     "! @parameter io_response | response ที่ status ไม่ตรงกับที่คาด
     "! @parameter rv_result   | ข้อความจาก error ของ OData หรือ status code ถ้าอ่านไม่ได้
     METHODS read_error
       IMPORTING io_response      TYPE REF TO if_web_http_response
       RETURNING VALUE(rv_result) TYPE string.
+
+    "! GET เพื่อขอ CSRF token และ ETag แล้ว PATCH entity 1 ตัว 1 รอบ
+    "! @parameter iv_service | outbound service ใน scenario ZCS_SO_UPDATE_OUT
+    "! @parameter iv_uri     | path ของ entity ต่อจาก path prefix ของ service
+    "! @parameter iv_body    | JSON ที่มีเฉพาะ field ที่แก้
+    "! @parameter ev_message | เหตุผลที่แก้ไม่สำเร็จ ถ้าว่างแปลว่าสำเร็จ
+    "! @parameter ev_retry   | X เมื่อควรลองใหม่ เพราะเอกสารยังบันทึกไม่เสร็จหรือยังถูก lock
+    METHODS try_patch
+      IMPORTING iv_service TYPE if_com_management=>ty_cscn_outb_srv_id
+                iv_uri     TYPE string
+                iv_body    TYPE string
+      EXPORTING ev_message TYPE string
+                ev_retry   TYPE abap_bool.
+
+    "! เช็คว่า error เกิดจากเอกสารถูก lock อยู่หรือไม่
+    "! @parameter io_response | response ที่ status ไม่ตรงกับที่คาด
+    "! @parameter rv_result   | X เมื่อเป็น message V1/042
+    METHODS is_lock_error
+      IMPORTING io_response      TYPE REF TO if_web_http_response
+      RETURNING VALUE(rv_result) TYPE abap_bool.
 
 ENDCLASS.
 
@@ -101,9 +128,39 @@ CLASS ZCL_ZSDE002_DOC_UPDATE_BASE IMPLEMENTATION.
 
   METHOD patch_entity.
 
+    DATA lv_retry TYPE abap_bool.
+
+    " เอกสารเพิ่งสร้างด้วย COMMIT ENTITIES ซึ่งบันทึกใน update task แบบ async
+    " ถ้ายิงเร็วเกินไป GET จะยังไม่เจอเอกสาร หรือ PATCH จะชน lock ที่ update task ยังถืออยู่
+    " จึงรอแล้วลองใหม่ ถ้าครบจำนวนครั้งแล้วยังไม่ผ่าน คืนข้อความจากรอบสุดท้าย
+    DO gc_max_attempt TIMES.
+
+      IF sy-index > 1.
+        WAIT UP TO gc_wait_seconds SECONDS.
+      ENDIF.
+
+      try_patch( EXPORTING iv_service = iv_service
+                           iv_uri     = iv_uri
+                           iv_body    = iv_body
+                 IMPORTING ev_message = rv_message
+                           ev_retry   = lv_retry ).
+
+      IF lv_retry = abap_false.
+        RETURN.
+      ENDIF.
+
+    ENDDO.
+
+  ENDMETHOD.
+
+
+  METHOD try_patch.
+
     " สร้าง client ใหม่ทุกครั้งเพื่อไม่ให้ header ของ entity ก่อนหน้าติดมา
     " ถ้า If-Match ของ entity ก่อนหน้าค้างอยู่ GET ของ entity ถัดไปจะได้ 412
     DATA lo_client TYPE REF TO if_web_http_client.
+
+    CLEAR: ev_message, ev_retry.
 
     TRY.
         DATA(lo_destination) = cl_http_destination_provider=>create_by_comm_arrangement(
@@ -125,7 +182,9 @@ CLASS ZCL_ZSDE002_DOC_UPDATE_BASE IMPLEMENTATION.
         DATA(lo_response) = lo_client->execute( if_web_http_client=>get ).
 
         IF lo_response->get_status( )-code <> 200.
-          rv_message = read_error( lo_response ).
+          ev_message = read_error( lo_response ).
+          " 404 แปลว่า update task ยังเขียนเอกสารลง DB ไม่เสร็จ
+          ev_retry   = xsdbool( lo_response->get_status( )-code = 404 ).
         ELSE.
 
           DATA(lv_token) = lo_response->get_header_field( 'x-csrf-token' ).
@@ -147,13 +206,14 @@ CLASS ZCL_ZSDE002_DOC_UPDATE_BASE IMPLEMENTATION.
           " V4 ตอบ 200 พร้อม entity ที่แก้แล้ว
           IF  lo_response->get_status( )-code <> 200
           AND lo_response->get_status( )-code <> 204.
-            rv_message = read_error( lo_response ).
+            ev_message = read_error( lo_response ).
+            ev_retry   = is_lock_error( lo_response ).
           ENDIF.
 
         ENDIF.
 
       CATCH cx_http_dest_provider_error cx_web_http_client_error cx_web_message_error INTO DATA(lx_error).
-        rv_message = lx_error->get_text( ).
+        ev_message = lx_error->get_text( ).
     ENDTRY.
 
     IF lo_client IS BOUND.
@@ -192,4 +252,23 @@ CLASS ZCL_ZSDE002_DOC_UPDATE_BASE IMPLEMENTATION.
                         ELSE |HTTP { ls_status-code } { ls_status-reason }| ).
 
   ENDMETHOD.
+
+
+  METHOD is_lock_error.
+
+    DATA lv_body TYPE string.
+
+    TRY.
+        lv_body = io_response->get_text( ).
+      CATCH cx_web_message_error.
+        RETURN.
+    ENDTRY.
+
+    " error.code ของ Gateway เป็น /IWBEP/CM_MGW_RT/022 ซึ่งใช้กับ business error ทุกชนิด
+    " message จริงอยู่ใน longtext_url เช็คจากตรงนั้นแทน
+    " V1/042 คือเอกสาร SD ถูก lock อยู่ ไม่ขึ้นกับภาษาของ user
+    rv_result = xsdbool( lv_body CS `MSGID='V1',MSGNO='042'` ).
+
+  ENDMETHOD.
+
 ENDCLASS.
